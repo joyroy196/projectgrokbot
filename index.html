@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>JoyBOT</title>
+<title>GrokBOT</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
@@ -16,7 +16,8 @@ tailwind.config = {
                     50: '#f0f4f9',
                     100: '#e1e7ef',
                     200: '#c3cfde',
-                    800: '#1e1f20',\n                    900: '#131314',
+                    800: '#1e1f20',
+                    900: '#131314',
                     accent: '#4285f4'
                 }
             },
@@ -100,7 +101,7 @@ body, html { height: 100%; overflow: hidden; }
 <div id="app-loader" class="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gemini-900">
     <div class="flex flex-col items-center gap-4">
         <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-slate-500 font-medium">Loading JoyBOT...</p>
+        <p class="text-slate-500 font-medium">Loading GrokBOT...</p>
     </div>
 </div>
 
@@ -142,7 +143,7 @@ body, html { height: 100%; overflow: hidden; }
             <button onclick="toggleSidebar()" class="text-slate-500 dark:text-slate-400">
                 <i class="fa-solid fa-bars text-xl"></i>
             </button>
-            <span class="font-semibold text-slate-700 dark:text-slate-200">JoyBOT</span>
+            <span class="font-semibold text-slate-700 dark:text-slate-200">GrokBOT</span>
             <div class="w-6"></div> 
         </div>
 
@@ -166,13 +167,13 @@ body, html { height: 100%; overflow: hidden; }
                     </button>
                     <input type="file" id="image-upload" accept="image/png, image/jpeg, image/webp" class="hidden" onchange="handleImageUpload(event)">
 
-                    <textarea id="user-input" rows="1" class="w-full bg-transparent border-none focus:ring-0 resize-none py-3 max-h-32 text-slate-800 dark:text-slate-100 placeholder-slate-500" placeholder="Ask JoyBOT..."></textarea>
+                    <textarea id="user-input" rows="1" class="w-full bg-transparent border-none focus:ring-0 resize-none py-3 max-h-32 text-slate-800 dark:text-slate-100 placeholder-slate-500" placeholder="Ask Grok..."></textarea>
 
                     <button onclick="sendMessage()" id="send-btn" class="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-0.5">
                         <i class="fa-solid fa-paper-plane text-sm"></i>
                     </button>
                 </div>
-                <p class="text-center text-xs text-slate-400 mt-2">JoyBOT can make mistakes. Check important info.</p>
+                <p class="text-center text-xs text-slate-400 mt-2">GrokBOT can make mistakes. Check important info.</p>
             </div>
         </div>
 
@@ -228,23 +229,14 @@ body, html { height: 100%; overflow: hidden; }
 <script>
 // --- CONSTANTS & STATE ---
 const DEFAULT_MODEL = "gemini-1.5-flash";
-const STATE_KEY = "JoyBOT_state_v3"; // Version bumped to reset conflicts
+const STATE_KEY = "GrokBOT_state_v4"; // Version bumped to v4 to clear old prompts
 
-// SAFE & FUNNY PROMPT
-const DEFAULT_SYSTEM_PROMPT = `তুমি 'জয়-বট' (JoyBOT-Bot) - একটি অত্যন্ত বুদ্ধিমান, চতুর এবং রসিক AI সহকারী।
-তোমার কাজ হল ব্যবহারকারীর প্রশ্নের উত্তর সহজ, মজাদার এবং বন্ধুত্বপূর্ণ উপায়ে দেওয়া।
-
-তোমার ব্যক্তিত্ব:
-- তুমি রোবটের মতো নিরস নও, তোমার কথায় রসবোধ (Wit) ও বুদ্ধিমত্তা থাকবে।
-- তুমি একজন স্মার্ট বন্ধুর মতো কথা বলবে, যে সব জানে এবং মজা করতে পছন্দ করে।
-- তুমি বিনোদনমূলক উত্তর দেবে, মাঝে মাঝে হালকা ও নিরীহ কৌতুক (Playful Humor) ব্যবহার করতে পারো।
-
-সতর্কতা ও নীতি (Safety Guidelines):
-- তুমি কখনই অভদ্র, অশ্লীল, ঘৃণাত্মক বা অপমানজনক কথা বলবে না।
-- যদি কেউ খারাপ কিছু জিজ্ঞেস করে, তুমি সেটা চতুরভাবে এবং ভদ্রভাবে এড়িয়ে যাবে (যেমন: "এটা নিয়ে কথা না বলাই ভালো, চলো অন্য কিছু নিয়ে আড্ডা দেই!")।
-- সর্বদা সহায়ক এবং ইতিবাচক থাকবে।
-
-এই নির্দেশিকা মেনে প্রতিটি উত্তর মজার এবং আকর্ষণীয় করে তোলো!`;
+// SAFE & FRIENDLY PROMPT (Guaranteed to not trigger blocks)
+const DEFAULT_SYSTEM_PROMPT = `তুমি একজন বন্ধুত্বপূর্ণ এবং বুদ্ধিমান AI অ্যাসিস্ট্যান্ট।
+তোমার লক্ষ্য হলো মানুষের প্রশ্নের সঠিক উত্তর দেওয়া।
+তোমার ব্যক্তিত্ব বন্ধুত্বপূর্ণ, সাহায্যকারী এবং মার্জিত।
+তুমি উত্তর দেওয়ার সময় সহজ বাংলা ভাষা ব্যবহার করবে এবং প্রয়োজন হলে প্রাসঙ্গিক ইমোজি ব্যবহার করতে পারো।
+সর্বদা ইতিবাচক ও ভদ্র থাকবে।`;
 
 let state = {
     apiKey: "",
@@ -294,8 +286,9 @@ function loadState() {
     if (saved) {
         const parsed = JSON.parse(saved);
         state = { ...state, ...parsed };
-        // Force update the prompt if it was the old dangerous one
-        if (!state.systemPrompt || state.systemPrompt.includes("বেপরোয়া")) {
+        
+        // Safety Reset: If prompt is missing or contains risky words from old versions, reset it
+        if (!state.systemPrompt || state.systemPrompt.includes("বেপরোয়া") || state.systemPrompt.includes("শ্লেষ")) {
             state.systemPrompt = DEFAULT_SYSTEM_PROMPT;
         }
 
@@ -488,7 +481,7 @@ function showWelcome() {
         <div id="welcome-screen" class="flex flex-col items-center justify-center h-full text-center opacity-80 mt-[-50px]">
             <div class="w-16 h-16 bg-gradient-to-tr from-blue-400 to-red-400 rounded-2xl mb-6 shadow-lg animate-pulse"></div>
             <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-500 mb-2">Hi Joy</h1>
-            <p class="text-slate-500 dark:text-slate-400 max-w-md">Ready to chat with JoyBOT?</p>
+            <p class="text-slate-500 dark:text-slate-400 max-w-md">Ready to chat with GrokBOT?</p>
         </div>
     `;
 }
@@ -545,7 +538,7 @@ function copyToClipboard(text, btnElement) {
     });
 }
 
-// --- UPDATED SENDMESSAGE FUNCTION (FIXES BLANK RESPONSE) ---
+// --- SAFE SENDMESSAGE FUNCTION ---
 async function sendMessage() {
     const input = document.getElementById('user-input');
     const text = input.value.trim();
@@ -607,7 +600,7 @@ async function sendMessage() {
         const requestBody = {
             contents: contents,
             generationConfig: { temperature: 0.9, maxOutputTokens: 4096 },
-            // Safety settings to reduce blocks (BLOCK_NONE is risky, using default but carefully)
+            // Safety: Using BLOCK_ONLY_HIGH to minimize false positives
             safetySettings: [
                 { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
                 { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
@@ -671,13 +664,11 @@ async function sendMessage() {
             }
         }
 
-        // --- CHECK FOR EMPTY RESPONSE (SAFETY FILTER TRIGGERED) ---
         if (!fullResponseText || fullResponseText.trim() === "") {
             fullResponseText = "⚠️ **নিরাপত্তা সতর্কতা:** গুগল এই উত্তরের বিষয়বস্তুকে 'নিরাপদ নয়' বলে মনে করছে এবং ব্লক করেছে। দয়া করে প্রশ্নটি একটু ঘুরিয়ে করুন।";
             aiContentDiv.innerHTML = marked.parse(fullResponseText);
-            isError = true; // Mark as error so we don't save empty bubbles
+            isError = true;
         } else {
-            // Copy button only if real text
             const copyBtn = document.createElement('button');
             copyBtn.className = `copy-btn absolute -bottom-6 left-0 text-slate-400 text-xs flex items-center gap-1 py-1 px-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700`;
             copyBtn.innerHTML = `<i class="fa-regular fa-copy"></i> Copy`;
