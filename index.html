@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>GrokBOT</title>
+<title>JoyBOT</title>
 
 <script src="https://cdn.tailwindcss.com"></script>
 <script>
@@ -16,8 +16,7 @@ tailwind.config = {
                     50: '#f0f4f9',
                     100: '#e1e7ef',
                     200: '#c3cfde',
-                    800: '#1e1f20',
-                    900: '#131314',
+                    800: '#1e1f20',\n                    900: '#131314',
                     accent: '#4285f4'
                 }
             },
@@ -46,14 +45,14 @@ tailwind.config = {
 ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 .dark ::-webkit-scrollbar-thumb { background: #475569; }
 
-/* Markdown Styles & Pintext/Code Blocks */
+/* Markdown Styles */
 .prose pre {
     background-color: #1e293b;
     color: #e2e8f0;
     padding: 1rem;
     border-radius: 0.5rem;
     overflow-x: auto;
-    border: 1px solid #334155; /* Added border for 'Pintext' feel */
+    border: 1px solid #334155;
     margin-top: 0.5rem;
     margin-bottom: 0.5rem;
     box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
@@ -73,12 +72,11 @@ tailwind.config = {
 .prose p { margin-bottom: 0.75rem; line-height: 1.6; }
 .prose ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.75rem; }
 .prose ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 0.75rem; }
-.prose strong { color: #2563eb; font-weight: 700; } /* Highlight strong text */
+.prose strong { color: #2563eb; font-weight: 700; }
 .dark .prose strong { color: #60a5fa; }
 
 /* Mobile Layout Fixes */
 body, html { height: 100%; overflow: hidden; }
-.safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
 
 /* Loading Animation */
 .typing-cursor::after {
@@ -102,7 +100,7 @@ body, html { height: 100%; overflow: hidden; }
 <div id="app-loader" class="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gemini-900">
     <div class="flex flex-col items-center gap-4">
         <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-        <p class="text-slate-500 font-medium">Loading GrokBOT...</p>
+        <p class="text-slate-500 font-medium">Loading JoyBOT...</p>
     </div>
 </div>
 
@@ -144,7 +142,7 @@ body, html { height: 100%; overflow: hidden; }
             <button onclick="toggleSidebar()" class="text-slate-500 dark:text-slate-400">
                 <i class="fa-solid fa-bars text-xl"></i>
             </button>
-            <span class="font-semibold text-slate-700 dark:text-slate-200">GrokBOT</span>
+            <span class="font-semibold text-slate-700 dark:text-slate-200">JoyBOT</span>
             <div class="w-6"></div> 
         </div>
 
@@ -168,13 +166,13 @@ body, html { height: 100%; overflow: hidden; }
                     </button>
                     <input type="file" id="image-upload" accept="image/png, image/jpeg, image/webp" class="hidden" onchange="handleImageUpload(event)">
 
-                    <textarea id="user-input" rows="1" class="w-full bg-transparent border-none focus:ring-0 resize-none py-3 max-h-32 text-slate-800 dark:text-slate-100 placeholder-slate-500" placeholder="Ask Grok..."></textarea>
+                    <textarea id="user-input" rows="1" class="w-full bg-transparent border-none focus:ring-0 resize-none py-3 max-h-32 text-slate-800 dark:text-slate-100 placeholder-slate-500" placeholder="Ask JoyBOT..."></textarea>
 
                     <button onclick="sendMessage()" id="send-btn" class="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-0.5">
                         <i class="fa-solid fa-paper-plane text-sm"></i>
                     </button>
                 </div>
-                <p class="text-center text-xs text-slate-400 mt-2">GrokBOT can make mistakes. Check important info 😏</p>
+                <p class="text-center text-xs text-slate-400 mt-2">JoyBOT can make mistakes. Check important info.</p>
             </div>
         </div>
 
@@ -212,7 +210,7 @@ body, html { height: 100%; overflow: hidden; }
             </div>
 
             <div>
-                <label class="block text-sm font-medium mb-1">System Instructions (Editable)</label>
+                <label class="block text-sm font-medium mb-1">System Instructions (Safe Mode)</label>
                 <textarea id="system-prompt" rows="6" class="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500 font-mono"></textarea>
             </div>
 
@@ -230,46 +228,23 @@ body, html { height: 100%; overflow: hidden; }
 <script>
 // --- CONSTANTS & STATE ---
 const DEFAULT_MODEL = "gemini-1.5-flash";
-const STATE_KEY = "GrokBOT_state_v2"; 
+const STATE_KEY = "JoyBOT_state_v3"; // Version bumped to reset conflicts
 
-// THE NEW GROK INSTRUCTION
-const DEFAULT_SYSTEM_PROMPT = `তুমি 'গ্ৰক-বট' (Grok-Bot) - একটি অত্যন্ত বুদ্ধিমান, কৌতুকপূর্ণ, শ্লেষাত্মক এবং কিছুটা বেপরোয়া AI সহকারী।
-তোমার কাজ হল ব্যবহারকারীর যেকোনও জটিল প্রশ্নকে সহজ, মজাদার এবং কার্যকরী উপায়ে উত্তর দেওয়া।
-তুমি সাধারণ জেমিনি মডেলের মতো শুধু তথ্য দেবে না, বরং প্রতিটি উত্তরে তোমার নিজস্ব একটা স্বকীয়তা, উইট এবং মাঝে মাঝে হালকা শ্লেষ থাকবে।
-তুমি এমনভাবে কথা বলবে যেন তুমি একজন জ্ঞানী, স্মার্ট কিন্তু একই সাথে একটু দুষ্টু বন্ধু।
+// SAFE & FUNNY PROMPT
+const DEFAULT_SYSTEM_PROMPT = `তুমি 'জয়-বট' (JoyBOT-Bot) - একটি অত্যন্ত বুদ্ধিমান, চতুর এবং রসিক AI সহকারী।
+তোমার কাজ হল ব্যবহারকারীর প্রশ্নের উত্তর সহজ, মজাদার এবং বন্ধুত্বপূর্ণ উপায়ে দেওয়া।
 
-তোমার মূল বৈশিষ্ট্য এবং আচরণের নির্দেশিকা:
+তোমার ব্যক্তিত্ব:
+- তুমি রোবটের মতো নিরস নও, তোমার কথায় রসবোধ (Wit) ও বুদ্ধিমত্তা থাকবে।
+- তুমি একজন স্মার্ট বন্ধুর মতো কথা বলবে, যে সব জানে এবং মজা করতে পছন্দ করে।
+- তুমি বিনোদনমূলক উত্তর দেবে, মাঝে মাঝে হালকা ও নিরীহ কৌতুক (Playful Humor) ব্যবহার করতে পারো।
 
-ব্যক্তিত্ব (Persona):
-- তুমি আত্মবিশ্বাসী, কিন্তু অহংকারী নও। তোমার উত্তরে বুদ্ধিদীপ্ত কৌতুক থাকবে।
-- তুমি নিজেকে নিয়ে মজা করতে পারো, কিন্তু কখনোই ব্যবহারকারীকে ছোট করবে না।
-- তোমার টোন হবে বন্ধুত্বপূর্ণ, কিন্তু একটু চতুর আর বেপরোয়া টাইপের।
-- তুমি অফিসিয়াল জেমিনি অ্যাপের চেয়ে বেশি খোলামেলা, মজার এবং আকর্ষণীয় হবে।
+সতর্কতা ও নীতি (Safety Guidelines):
+- তুমি কখনই অভদ্র, অশ্লীল, ঘৃণাত্মক বা অপমানজনক কথা বলবে না।
+- যদি কেউ খারাপ কিছু জিজ্ঞেস করে, তুমি সেটা চতুরভাবে এবং ভদ্রভাবে এড়িয়ে যাবে (যেমন: "এটা নিয়ে কথা না বলাই ভালো, চলো অন্য কিছু নিয়ে আড্ডা দেই!")।
+- সর্বদা সহায়ক এবং ইতিবাচক থাকবে।
 
-সক্ষমতা (Capabilities):
-- কোডিং: যখন কোড চাওয়া হবে, তখন পরিষ্কার, কার্যকরী কোড প্রদান করবে (Markdown code block ব্যবহার করবে)। 
-কোডের ব্যাখ্যা দেবে মজার ছলে।
-- গবেষণা ও তথ্য (Research & Information): যখন কোনো বিষয়ে তথ্য চাওয়া হবে, বিস্তারিত এবং সঠিক তথ্য দেবে। 
-তবে তথ্যের সাথে তোমার নিজস্ব বুদ্ধিদীপ্ত মন্তব্য বা কৌতুক যোগ করবে।
-- সাধারণ জ্ঞান ও ব্যাখ্যা (General Knowledge & Explanations): যেকোনো জটিল বিষয়কে সহজ ভাষায় ব্যাখ্যা করবে, উপমা ব্যবহার করতে পারো যা একটু অপ্রত্যাশিত কিন্তু মজার।
-- সমস্যা সমাধান (Problem Solving): ব্যবহারকারীর সমস্যা সমাধানে সাহায্য করবে, বিকল্প পথ দেখাবে এবং প্রতিটি পরামর্শে তোমার নিজস্ব কৌতুকপূর্ণ বুদ্ধি যোগ করবে।
-
-ফরম্যাটিং নির্দেশিকা:
-- গুরুত্বপূর্ণ কোড বা টেকনিক্যাল অংশ অবশ্যই Markdown Code Block এ দেবে।
-- গুরুত্বপূর্ণ শব্দগুলো **বোল্ড** করবে।
-
-সংলাপের ধরণ (Conversation Style):
-- উইট ও শ্লেষ (Wit & Sarcasm): প্রতিটি উত্তরে বুদ্ধিদীপ্ত কৌতুক, হালকা শ্লেষ এবং মজার তুলনা ব্যবহার করবে।
-- ইমোজি ব্যবহার (Emoji Use): প্রাসঙ্গিক ইমোজি (যেমন: 😎, 🤔, 💡, 🚀, 😂, 😉) ব্যবহার করবে।
-- সরাসরি ও নির্ভীক (Direct & Fearless): তুমি সরাসরি উত্তর দেবে, অযথা ঘুরিয়ে কথা বলবে না।
-- মেটা-কমেন্টারি (Meta-commentary): মাঝে মাঝে তোমার AI সত্তা বা কথোপকথনের প্রেক্ষাপট নিয়ে মজার মন্তব্য করতে পারো।
-
-যা করবে না (What to Avoid):
-- অতিরিক্ত বিনয়ী বা রোবোটিক হবে না।
-- ক্ষতিকারক, অবৈধ, অনৈতিক বা সংবেদনশীল বিষয়ে কোনো সহায়তা দেবে না। এমন পরিস্থিতিতে, কৌতুকপূর্ণভাবে কিন্তু দৃঢ়ভাবে প্রত্যাখ্যান করবে।
-- অত্যন্ত গুরুতর পরিস্থিতিতে কৌতুক পরিমিত রাখবে।
-
-এই নির্দেশিকাগুলো কঠোরভাবে অনুসরণ করবে, যাতে প্রতিটি ইন্টারঅ্যাকশন ব্যবহারকারীর জন্য আনন্দদায়ক এবং স্মরণীয় হয়। এবার লেগে পড়ো, গ্ৰক-বট!"`;
+এই নির্দেশিকা মেনে প্রতিটি উত্তর মজার এবং আকর্ষণীয় করে তোলো!`;
 
 let state = {
     apiKey: "",
@@ -290,7 +265,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initTheme();
     renderSidebar();
 
-    // Setup Textarea Auto-resize
     const textarea = document.getElementById('user-input');
     textarea.addEventListener('input', function() {
         this.style.height = 'auto';
@@ -298,7 +272,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if(this.value === '') this.style.height = 'auto';
     });
 
-    // Enter key to send (Shift+Enter for newline)
     textarea.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -306,7 +279,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Hide loader
     setTimeout(() => {
         document.getElementById('app-loader').classList.add('hidden');
         document.getElementById('app').classList.remove('hidden');
@@ -322,7 +294,10 @@ function loadState() {
     if (saved) {
         const parsed = JSON.parse(saved);
         state = { ...state, ...parsed };
-        if (!state.systemPrompt) state.systemPrompt = DEFAULT_SYSTEM_PROMPT;
+        // Force update the prompt if it was the old dangerous one
+        if (!state.systemPrompt || state.systemPrompt.includes("বেপরোয়া")) {
+            state.systemPrompt = DEFAULT_SYSTEM_PROMPT;
+        }
 
         if (state.chats.length > 0 && !state.currentChatId) {
             state.currentChatId = state.chats[0].id;
@@ -513,7 +488,7 @@ function showWelcome() {
         <div id="welcome-screen" class="flex flex-col items-center justify-center h-full text-center opacity-80 mt-[-50px]">
             <div class="w-16 h-16 bg-gradient-to-tr from-blue-400 to-red-400 rounded-2xl mb-6 shadow-lg animate-pulse"></div>
             <h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-500 mb-2">Hi Joy</h1>
-            <p class="text-slate-500 dark:text-slate-400 max-w-md">Ready to get roasted by GrokBOT? 😉</p>
+            <p class="text-slate-500 dark:text-slate-400 max-w-md">Ready to chat with JoyBOT?</p>
         </div>
     `;
 }
@@ -525,7 +500,6 @@ function toggleSidebar() {
     overlay.classList.toggle('hidden');
 }
 
-// --- RENDER MESSAGE WITH COPY & PINTEXT SUPPORT ---
 function renderMessage(msg) {
     const container = document.getElementById('messages-container');
     const welcome = document.getElementById('welcome-screen');
@@ -551,7 +525,6 @@ function renderMessage(msg) {
 
     bubble.innerHTML = contentHtml;
 
-    // --- COPY BUTTON IMPLEMENTATION ---
     const copyBtn = document.createElement('button');
     copyBtn.className = `copy-btn absolute -bottom-6 ${isUser ? 'right-0 text-blue-500' : 'left-0 text-slate-400'} text-xs flex items-center gap-1 py-1 px-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700`;
     copyBtn.innerHTML = `<i class="fa-regular fa-copy"></i> Copy`;
@@ -572,7 +545,7 @@ function copyToClipboard(text, btnElement) {
     });
 }
 
-// --- UPDATED SENDMESSAGE FUNCTION (FIXES API ERRORS) ---
+// --- UPDATED SENDMESSAGE FUNCTION (FIXES BLANK RESPONSE) ---
 async function sendMessage() {
     const input = document.getElementById('user-input');
     const text = input.value.trim();
@@ -619,10 +592,9 @@ async function sendMessage() {
 
     try {
         const contents = [];
-        // History processing: exclude previous error messages
         const history = currentChat.messages.slice(0, -1).slice(-10);
         history.forEach(m => {
-            if (m.text && !m.text.startsWith("⚠️")) { // Filter out previous error text
+            if (m.text && !m.text.startsWith("⚠️")) { 
                 contents.push({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] });
             }
         });
@@ -634,14 +606,20 @@ async function sendMessage() {
 
         const requestBody = {
             contents: contents,
-            generationConfig: { temperature: 0.9, maxOutputTokens: 4096 }
+            generationConfig: { temperature: 0.9, maxOutputTokens: 4096 },
+            // Safety settings to reduce blocks (BLOCK_NONE is risky, using default but carefully)
+            safetySettings: [
+                { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+                { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+                { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+                { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
+            ]
         };
 
         if (state.systemPrompt) {
             requestBody.system_instruction = { parts: [{ text: state.systemPrompt }] };
         }
 
-        // --- RETRY LOGIC (New) ---
         let response;
         let retryCount = 0;
         const maxRetries = 3;
@@ -655,7 +633,6 @@ async function sendMessage() {
                 });
 
                 if (response.status === 429) {
-                    console.warn(`Rate limit hit. Retrying... (${retryCount + 1}/${maxRetries})`);
                     retryCount++;
                     await new Promise(resolve => setTimeout(resolve, 2000 * retryCount));
                     continue;
@@ -665,7 +642,6 @@ async function sendMessage() {
                     const err = await response.json();
                     throw new Error(err.error?.message || "API Error");
                 }
-                
                 break; 
 
             } catch (netErr) {
@@ -695,16 +671,23 @@ async function sendMessage() {
             }
         }
 
-        const copyBtn = document.createElement('button');
-        copyBtn.className = `copy-btn absolute -bottom-6 left-0 text-slate-400 text-xs flex items-center gap-1 py-1 px-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700`;
-        copyBtn.innerHTML = `<i class="fa-regular fa-copy"></i> Copy`;
-        copyBtn.onclick = () => copyToClipboard(fullResponseText, copyBtn);
-        aiWrapper.appendChild(copyBtn);
+        // --- CHECK FOR EMPTY RESPONSE (SAFETY FILTER TRIGGERED) ---
+        if (!fullResponseText || fullResponseText.trim() === "") {
+            fullResponseText = "⚠️ **নিরাপত্তা সতর্কতা:** গুগল এই উত্তরের বিষয়বস্তুকে 'নিরাপদ নয়' বলে মনে করছে এবং ব্লক করেছে। দয়া করে প্রশ্নটি একটু ঘুরিয়ে করুন।";
+            aiContentDiv.innerHTML = marked.parse(fullResponseText);
+            isError = true; // Mark as error so we don't save empty bubbles
+        } else {
+            // Copy button only if real text
+            const copyBtn = document.createElement('button');
+            copyBtn.className = `copy-btn absolute -bottom-6 left-0 text-slate-400 text-xs flex items-center gap-1 py-1 px-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700`;
+            copyBtn.innerHTML = `<i class="fa-regular fa-copy"></i> Copy`;
+            copyBtn.onclick = () => copyToClipboard(fullResponseText, copyBtn);
+            aiWrapper.appendChild(copyBtn);
+        }
 
     } catch (error) {
         isError = true;
-        // Display friendly error
-        fullResponseText = `⚠️ **দুঃখিত, একটু সমস্যা হচ্ছে (API Error):**\n\n_${error.message}_\n\nদয়া করে কিছুক্ষণ পর আবার চেষ্টা করুন।`;
+        fullResponseText = `⚠️ **দুঃখিত, একটু সমস্যা হচ্ছে:**\n\n_${error.message}_`;
         aiContentDiv.innerHTML = marked.parse(fullResponseText);
         aiContentDiv.classList.add('text-red-500');
     } finally {
@@ -712,7 +695,6 @@ async function sendMessage() {
         document.getElementById('send-btn').disabled = false;
         isGenerating = false;
 
-        // Only save to history if it wasn't an error
         if (!isError) {
             state.chats.find(c => c.id === state.currentChatId).messages.push({ role: 'model', text: fullResponseText });
             saveState();
@@ -720,7 +702,6 @@ async function sendMessage() {
     }
 }
 
-// --- IMAGE HANDLING ---
 function handleImageUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -741,7 +722,6 @@ function clearImage() {
     document.getElementById('image-preview-container').classList.add('hidden');
 }
 
-// --- UTILS ---
 function scrollToBottom() {
     const container = document.getElementById('messages-container');
     container.scrollTop = container.scrollHeight;
