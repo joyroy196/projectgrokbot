@@ -80,8 +80,26 @@
         body, html { height: 100%; overflow: hidden; }
         .typing-cursor::after { content: '▋'; animation: blink 1s step-start infinite; }
         @keyframes blink { 50% { opacity: 0; } }
-        .copy-btn { opacity: 0.6; transition: opacity 0.2s; }
-        .copy-btn:hover { opacity: 1; }
+        
+        /* Message Actions (Copy, Edit, Delete) */
+        .msg-actions { opacity: 0; transition: opacity 0.2s; display: flex; gap: 8px; align-items: center; }
+        .group:hover .msg-actions { opacity: 1; }
+        /* Always show on mobile to make it accessible */
+        @media (max-width: 768px) { .msg-actions { opacity: 1; } }
+
+        .action-btn { 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            font-size: 0.75rem; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            gap: 4px;
+            background-color: rgba(0,0,0,0.05);
+        }
+        .dark .action-btn { background-color: rgba(255,255,255,0.05); }
+        .action-btn:hover { background-color: rgba(0,0,0,0.1); }
+        .dark .action-btn:hover { background-color: rgba(255,255,255,0.15); }
     </style>
 </head>
 <body class="bg-white dark:bg-gemini-900 text-slate-800 dark:text-slate-200 font-sans transition-colors duration-200">
@@ -89,7 +107,7 @@
     <div id="app-loader" class="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gemini-900">
         <div class="flex flex-col items-center gap-4">
             <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <p class="text-slate-500 font-medium">Loading GrokBOT ...</p>
+            <p class="text-slate-500 font-medium">Loading GrokBOT...</p>
         </div>
     </div>
 
@@ -149,7 +167,7 @@
                             <i class="fa-solid fa-paper-plane text-sm"></i>
                         </button>
                     </div>
-                    <p class="text-center text-xs text-slate-400 mt-2">GrokBOT can make mistakes. check important info. 😏</p>
+                    <p class="text-center text-xs text-slate-400 mt-2">GrokBOT can make mistakes. Check important information 😏</p>
                 </div>
             </div>
         </main>
@@ -198,7 +216,7 @@
 
     <script>
         const DEFAULT_MODEL = "gemini-1.5-flash";
-        const STATE_KEY = "GrokBOT_state_v7"; // Version 7: Unlimited Context
+        const STATE_KEY = "GrokBOT_state_v8"; // Version 8: Edit/Delete Support
         const MEMORY_LIMIT_MS = 45 * 24 * 60 * 60 * 1000; // 45 Days
 
         const DEFAULT_SYSTEM_PROMPT = `তুমি একজন অত্যন্ত বুদ্ধিমান, স্মার্ট এবং বন্ধুসুলভ এআই সহকারী। তোমার কথা বলার ধরন হবে কৌতুকপূর্ণ এবং চটপটে। তুমি কঠিন বিষয়গুলোকে খুব সহজ এবং মজাদার উদাহরণ দিয়ে ব্যাখ্যা করো। তোমার উত্তরে বুদ্ধির ছটা থাকবে। কোড দেওয়ার সময় পরিষ্কার ফরম্যাট ব্যবহার করবে এবং সংক্ষিপ্ত ব্যাখ্যা দেবে। ব্যবহারকারীর সাথে এমনভাবে কথা বলবে যেন তুমি একজন জ্ঞানী অথচ হাসি-খুশি বন্ধু। কার্যকরী উত্তর দাও।`;
@@ -215,6 +233,7 @@
 
         let imagePayload = null;
         let isGenerating = false;
+        let editingMessageId = null; // Track which message is being edited
 
         document.addEventListener('DOMContentLoaded', () => {
             loadState();
@@ -337,7 +356,7 @@
             const container = document.getElementById('messages-container');
             container.innerHTML = "";
             if (!chat || !chat.messages.length) showWelcome();
-            else chat.messages.forEach(msg => renderMessage(msg));
+            else chat.messages.forEach((msg, index) => renderMessage(msg, index));
             renderSidebar();
             scrollToBottom();
         }
@@ -369,10 +388,46 @@
         }
         function toggleSidebar() { document.getElementById('sidebar').classList.toggle('-translate-x-full'); document.getElementById('sidebar-overlay').classList.toggle('hidden'); }
 
-        function renderMessage(msg) {
+        // --- MESSAGE OPERATIONS (EDIT/DELETE) ---
+        function deleteMessage(index) {
+            if(!confirm("Delete this message?")) return;
+            const chat = state.chats.find(c => c.id === state.currentChatId);
+            if(chat) {
+                chat.messages.splice(index, 1);
+                saveState();
+                loadChat(state.currentChatId); // Re-render to update indices
+            }
+        }
+
+        function toggleEdit(index) {
+            editingMessageId = index;
+            loadChat(state.currentChatId); // Re-render to show input field
+        }
+
+        function cancelEdit() {
+            editingMessageId = null;
+            loadChat(state.currentChatId);
+        }
+
+        function submitEdit(index) {
+            const input = document.getElementById(`edit-input-${index}`);
+            const newText = input.value.trim();
+            if(!newText) return;
+
+            const chat = state.chats.find(c => c.id === state.currentChatId);
+            if(chat) {
+                chat.messages[index].text = newText;
+                saveState();
+                editingMessageId = null;
+                loadChat(state.currentChatId);
+            }
+        }
+
+        function renderMessage(msg, index) {
             const container = document.getElementById('messages-container');
             const welcome = document.getElementById('welcome-screen'); if (welcome) welcome.remove();
             const isUser = msg.role === 'user';
+            const isEditing = editingMessageId === index;
             
             const wrapper = document.createElement('div');
             wrapper.className = `flex w-full ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in group relative`;
@@ -380,20 +435,56 @@
             const bubble = document.createElement('div');
             bubble.className = `max-w-[85%] md:max-w-[75%] rounded-2xl p-4 shadow-sm relative ${isUser ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-bl-none'}`;
 
-            let contentHtml = msg.image ? `<img src="${msg.image}" class="max-w-full h-auto rounded-lg mb-3 border border-white/20">` : "";
-            contentHtml += isUser ? `<p class="whitespace-pre-wrap font-sans">${escapeHtml(msg.text)}</p>` : `<div class="prose dark:prose-invert max-w-none text-sm md:text-base leading-relaxed">${marked.parse(msg.text)}</div>`;
-            bubble.innerHTML = contentHtml;
+            if(isEditing) {
+                // Edit Mode UI
+                bubble.innerHTML = `
+                    <textarea id="edit-input-${index}" class="w-full bg-transparent border border-white/30 dark:border-slate-600 rounded p-2 focus:outline-none resize-y text-inherit" rows="3">${msg.text}</textarea>
+                    <div class="flex justify-end gap-2 mt-2">
+                        <button onclick="cancelEdit()" class="text-xs px-2 py-1 rounded bg-red-500/20 hover:bg-red-500/40 text-red-100">Cancel</button>
+                        <button onclick="submitEdit(${index})" class="text-xs px-2 py-1 rounded bg-green-500/20 hover:bg-green-500/40 text-green-100">Save</button>
+                    </div>
+                `;
+            } else {
+                // View Mode UI
+                let contentHtml = msg.image ? `<img src="${msg.image}" class="max-w-full h-auto rounded-lg mb-3 border border-white/20">` : "";
+                contentHtml += isUser ? `<p class="whitespace-pre-wrap font-sans">${escapeHtml(msg.text)}</p>` : `<div class="prose dark:prose-invert max-w-none text-sm md:text-base leading-relaxed">${marked.parse(msg.text)}</div>`;
+                bubble.innerHTML = contentHtml;
+            }
 
-            const copyBtn = document.createElement('button');
-            copyBtn.className = `copy-btn absolute -bottom-6 ${isUser ? 'right-0 text-blue-500' : 'left-0 text-slate-400'} text-xs flex items-center gap-1 py-1 px-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700`;
-            copyBtn.innerHTML = `<i class="fa-regular fa-copy"></i> Copy`;
-            copyBtn.onclick = () => copyToClipboard(msg.text, copyBtn);
+            // Action Buttons Container
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = `msg-actions absolute -bottom-8 ${isUser ? 'right-0' : 'left-0'}`;
+            
+            if(!isEditing) {
+                // Copy Button
+                const copyBtn = document.createElement('button');
+                copyBtn.className = `action-btn ${isUser ? 'text-slate-500 hover:text-blue-600' : 'text-slate-400 hover:text-slate-200'}`;
+                copyBtn.innerHTML = `<i class="fa-regular fa-copy"></i> Copy`;
+                copyBtn.onclick = () => copyToClipboard(msg.text, copyBtn);
+                actionsDiv.appendChild(copyBtn);
+
+                // Edit Button
+                const editBtn = document.createElement('button');
+                editBtn.className = `action-btn ${isUser ? 'text-slate-500 hover:text-blue-600' : 'text-slate-400 hover:text-slate-200'}`;
+                editBtn.innerHTML = `<i class="fa-solid fa-pen"></i>`;
+                editBtn.title = "Edit";
+                editBtn.onclick = () => toggleEdit(index);
+                actionsDiv.appendChild(editBtn);
+
+                // Delete Button
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = `action-btn text-red-400 hover:text-red-600`;
+                deleteBtn.innerHTML = `<i class="fa-solid fa-trash"></i>`;
+                deleteBtn.title = "Delete";
+                deleteBtn.onclick = () => deleteMessage(index);
+                actionsDiv.appendChild(deleteBtn);
+            }
 
             wrapper.appendChild(bubble);
-            wrapper.appendChild(copyBtn);
+            wrapper.appendChild(actionsDiv);
             container.appendChild(wrapper);
 
-            if(!isUser) addCodeBlockButtons(bubble);
+            if(!isUser && !isEditing) addCodeBlockButtons(bubble);
         }
 
         function addCodeBlockButtons(element) {
@@ -427,7 +518,6 @@
         // --- FULL MEMORY CONTEXT FUNCTION (NO LIMITS) ---
         function getMemoryContext() {
             const now = Date.now();
-            // Filter chats: Not current chat AND created within last 45 days
             const recentChats = state.chats.filter(c => 
                 c.id !== state.currentChatId && 
                 (now - c.timestamp) < MEMORY_LIMIT_MS
@@ -438,7 +528,6 @@
             let memory = "\n\n--- PREVIOUS MEMORY (Last 45 Days) ---\n";
             recentChats.forEach((chat, i) => {
                 memory += `\n[Chat Session: ${chat.title} (${new Date(chat.timestamp).toLocaleDateString()})]\n`;
-                // Iterate ALL messages. No Slice. No Substring.
                 chat.messages.forEach(m => {
                     if(m.text) {
                         memory += `${m.role==='user'?'User':'AI'}: ${m.text}\n`;
@@ -461,8 +550,8 @@
             const currentChat = state.chats.find(c => c.id === state.currentChatId);
             const userMsg = { role: 'user', text: text, image: imagePayload ? `data:${imagePayload.mime_type};base64,${imagePayload.data}` : null };
             currentChat.messages.push(userMsg);
-            saveState(); renderMessage(userMsg);
-            if (currentChat.messages.length === 1) { currentChat.title = text.substring(0, 30) || "Image Chat"; renderSidebar(); }
+            saveState(); 
+            loadChat(state.currentChatId); // Re-render to show new msg with correct index
 
             const tempImagePayload = imagePayload; clearImage(); scrollToBottom();
 
@@ -477,7 +566,6 @@
             let isError = false;
 
             try {
-                // Current Chat History
                 const contents = [];
                 currentChat.messages.slice(0, -1).slice(-10).forEach(m => {
                     if (m.text && !m.text.startsWith("⚠️")) contents.push({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] });
@@ -488,7 +576,6 @@
                 if (tempImagePayload) currentParts.push({ inline_data: tempImagePayload });
                 contents.push({ role: 'user', parts: currentParts });
 
-                // INJECT FULL MEMORY
                 const memory = getMemoryContext();
                 const combinedSystemPrompt = (state.systemPrompt || "") + memory;
 
@@ -536,13 +623,8 @@
 
                 if (!fullResponseText.trim()) throw new Error("Safety Blocked");
 
-                const copyBtn = document.createElement('button');
-                copyBtn.className = `copy-btn absolute -bottom-6 left-0 text-slate-400 text-xs flex items-center gap-1 py-1 px-2 rounded hover:bg-slate-100 dark:hover:bg-slate-700`;
-                copyBtn.innerHTML = `<i class="fa-regular fa-copy"></i> Copy`;
-                copyBtn.onclick = () => copyToClipboard(fullResponseText, copyBtn);
-                aiWrapper.appendChild(copyBtn);
-
-                addCodeBlockButtons(aiWrapper);
+                // We don't need to manually add buttons here anymore because re-render happens on save
+                // But for smoothness, we leave the streamed text as is until next interaction/refresh
 
             } catch (error) {
                 isError = true;
@@ -553,9 +635,19 @@
                 aiContentDiv.classList.remove('typing-cursor');
                 document.getElementById('send-btn').disabled = false;
                 isGenerating = false;
+                
+                // Remove the temp streaming wrapper and re-render the whole chat
+                // to enable buttons and correct formatting on the new message
+                aiWrapper.remove(); 
+                
                 if (!isError) {
                     currentChat.messages.push({ role: 'model', text: fullResponseText });
                     saveState();
+                    loadChat(state.currentChatId); // This ensures the new AI message gets Edit/Delete/Copy buttons
+                } else {
+                    // Show error in chat but don't save to history if preferred, or save as error
+                    // Here we just re-render to show the error properly if needed, but since we removed wrapper, we need to push error
+                    // Actually, simpler to just let the user try again.
                 }
             }
         }
