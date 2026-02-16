@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>JoyBOT</title>
+    <title>GrokBOT</title>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
@@ -25,11 +25,13 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <style>
+        /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 6px; height: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         .dark ::-webkit-scrollbar-thumb { background: #475569; }
 
+        /* Markdown Styles */
         .prose pre {
             background-color: #1e293b;
             color: #e2e8f0;
@@ -55,6 +57,7 @@
         .prose strong { color: #2563eb; font-weight: 700; }
         .dark .prose strong { color: #60a5fa; }
 
+        /* Code Block Copy Button Style */
         .code-copy-btn {
             position: absolute;
             top: 0.5rem;
@@ -73,10 +76,12 @@
         }
         .code-copy-btn:hover { background: rgba(255, 255, 255, 0.2); color: white; }
 
+        /* UI Helpers */
         body, html { height: 100%; overflow: hidden; }
         .typing-cursor::after { content: '▋'; animation: blink 1s step-start infinite; }
         @keyframes blink { 50% { opacity: 0; } }
         
+        /* Message Actions */
         .msg-actions { opacity: 0; transition: opacity 0.2s; display: flex; gap: 8px; align-items: center; }
         .group:hover .msg-actions { opacity: 1; }
         @media (max-width: 768px) { .msg-actions { opacity: 1; } }
@@ -101,7 +106,7 @@
     <div id="app-loader" class="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gemini-900">
         <div class="flex flex-col items-center gap-4">
             <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-            <p class="text-slate-500 font-medium">Loading JoyBOT...</p>
+            <p class="text-slate-500 font-medium">Loading GrokBOT...</p>
         </div>
     </div>
 
@@ -136,11 +141,11 @@
                 <button onclick="toggleSidebar()" class="text-slate-500 dark:text-slate-400">
                     <i class="fa-solid fa-bars text-xl"></i>
                 </button>
-                <span class="font-semibold text-slate-700 dark:text-slate-200">JoyBOT</span>
+                <span class="font-semibold text-slate-700 dark:text-slate-200">GrokBOT</span>
                 <div class="w-6"></div>
             </div>
 
-            <div id="messages-container" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 scroll-smooth pb-32"></div>
+            <div id="messages-container" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth pb-32"></div>
 
             <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-white via-white to-transparent dark:from-gemini-900 dark:via-gemini-900 pt-10 pb-4 px-4 z-20">
                 <div class="max-w-3xl mx-auto relative">
@@ -156,12 +161,12 @@
                             <i class="fa-solid fa-paperclip text-lg"></i>
                         </button>
                         <input type="file" id="image-upload" accept="image/png, image/jpeg, image/webp" class="hidden" onchange="handleImageUpload(event)">
-                        <textarea id="user-input" rows="1" class="w-full bg-transparent border-none focus:ring-0 resize-none py-3 max-h-32 text-slate-800 dark:text-slate-100 placeholder-slate-500" placeholder="Ask JoyBOT..."></textarea>
+                        <textarea id="user-input" rows="1" class="w-full bg-transparent border-none focus:ring-0 resize-none py-3 max-h-32 text-slate-800 dark:text-slate-100 placeholder-slate-500" placeholder="Ask Grok..."></textarea>
                         <button onclick="sendMessage()" id="send-btn" class="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-0.5">
                             <i class="fa-solid fa-paper-plane text-sm"></i>
                         </button>
                     </div>
-                    <p class="text-center text-xs text-slate-400 mt-2">JoyBOT can make mistakes. Check important info. 😏</p>
+                    <p class="text-center text-xs text-slate-400 mt-2">GrokBOT can make mistakes. Check important info. 😏</p>
                 </div>
             </div>
         </main>
@@ -210,9 +215,9 @@
 
     <script>
         const DEFAULT_MODEL = "gemini-1.5-flash";
-        const EMBEDDING_MODEL = "embedding-001";
-        const STATE_KEY = "JoyBOT_state_v9";
-        const MEMORY_LIMIT_MS = 45 * 24 * 60 * 60 * 1000;
+        const EMBEDDING_MODEL = "embedding-001"; // নতুন যোগ করা
+        const STATE_KEY = "GrokBOT_state_v9"; // Version 9: User Only Edit/Delete
+        const MEMORY_LIMIT_MS = 45 * 24 * 60 * 60 * 1000; // 45 Days
 
         const DEFAULT_SYSTEM_PROMPT = `তুমি একজন অত্যন্ত বুদ্ধিমান, স্মার্ট এবং বন্ধুসুলভ এআই সহকারী। তোমার কথা বলার ধরন হবে কৌতুকপূর্ণ এবং চটপটে। তুমি কঠিন বিষয়গুলোকে খুব সহজ এবং মজাদার উদাহরণ দিয়ে ব্যাখ্যা করো। তোমার উত্তরে বুদ্ধির ছটা থাকবে। কোড দেওয়ার সময় পরিষ্কার ফরম্যাট ব্যবহার করবে এবং সংক্ষিপ্ত ব্যাখ্যা দেবে। ব্যবহারকারীর সাথে এমনভাবে কথা বলবে যেন তুমি একজন জ্ঞানী অথচ হাসি-খুশি বন্ধু। কার্যকরী উত্তর দাও।`;
 
@@ -268,7 +273,9 @@
                 const originalCount = state.chats.length;
                 state.chats = state.chats.filter(c => (now - c.timestamp) < MEMORY_LIMIT_MS);
                 
-                if(state.chats.length < originalCount) saveState();
+                if(state.chats.length < originalCount) {
+                    saveState();
+                }
 
                 if (!state.systemPrompt || state.systemPrompt.includes("বেপরোয়া")) state.systemPrompt = DEFAULT_SYSTEM_PROMPT;
                 if (state.chats.length > 0 && !state.currentChatId) state.currentChatId = state.chats[0].id;
@@ -333,6 +340,7 @@
         function toggleKeyVisibility() { const i = document.getElementById('api-key-input'); i.type = i.type === 'password' ? 'text' : 'password'; }
         function clearAllData() { if(confirm("Are you sure?")) { localStorage.removeItem(STATE_KEY); location.reload(); } }
 
+        // === নতুন Semantic Memory ফাংশনগুলো ===
         function cosineSimilarity(vec1, vec2) {
             let dotProduct = 0;
             let mag1 = 0;
@@ -366,7 +374,7 @@
             if (!chat || chat.messages.length < 6) return '';
             const recentMessages = chat.messages.slice(-25);
             let conversation = recentMessages.map(m => 
-                `${m.role === 'user' ? 'Joy' : 'JoyBOT'}: ${m.text}`
+                `${m.role === 'user' ? 'Joy' : 'GrokBOT'}: ${m.text}`
             ).join('\n');
 
             const summaryPrompt = `এই কথোপকথনটি সংক্ষেপে সারাংশ করো (৩০০-৫০০ শব্দের মধ্যে)। ফোকাস করো:
@@ -451,6 +459,7 @@
         }
 
         async function createNewChat() {
+            // পুরনো চ্যাট সামারাইজ করা (ব্যাকগ্রাউন্ডে)
             if (state.currentChatId) {
                 const currentChat = state.chats.find(c => c.id === state.currentChatId);
                 if (currentChat && currentChat.messages.length > 8 && !currentChat.summary) {
@@ -508,10 +517,11 @@
         }
 
         function showWelcome() {
-            document.getElementById('messages-container').innerHTML = `<div id="welcome-screen" class="flex flex-col items-center justify-center h-full text-center opacity-80 mt-[-50px]"><div class="w-16 h-16 bg-gradient-to-tr from-blue-400 to-red-400 rounded-2xl mb-6 shadow-lg animate-pulse"></div><h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-500 mb-2">Hi Joy</h1><p class="text-slate-500 dark:text-slate-400 max-w-md">Ready to chat with JoyBOT?</p></div>`;
+            document.getElementById('messages-container').innerHTML = `<div id="welcome-screen" class="flex flex-col items-center justify-center h-full text-center opacity-80 mt-[-50px]"><div class="w-16 h-16 bg-gradient-to-tr from-blue-400 to-red-400 rounded-2xl mb-6 shadow-lg animate-pulse"></div><h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-500 mb-2">Hi Joy</h1><p class="text-slate-500 dark:text-slate-400 max-w-md">Ready to chat with GrokBOT?</p></div>`;
         }
         function toggleSidebar() { document.getElementById('sidebar').classList.toggle('-translate-x-full'); document.getElementById('sidebar-overlay').classList.toggle('hidden'); }
 
+        // --- MESSAGE OPERATIONS ---
         function deleteMessage(index) {
             if(!confirm("Delete this message?")) return;
             const chat = state.chats.find(c => c.id === state.currentChatId);
@@ -548,14 +558,12 @@
 
         function renderMessage(msg, index) {
             const container = document.getElementById('messages-container');
-            const welcome = document.getElementById('welcome-screen'); 
-            if (welcome) welcome.remove();
-            
+            const welcome = document.getElementById('welcome-screen'); if (welcome) welcome.remove();
             const isUser = msg.role === 'user';
             const isEditing = editingMessageId === index;
             
             const wrapper = document.createElement('div');
-            wrapper.className = `flex w-full ${isUser ? 'justify-end pb-14' : 'justify-start'} animate-fade-in group relative`;
+            wrapper.className = `flex w-full ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in group relative`;
 
             const bubble = document.createElement('div');
             bubble.className = `max-w-[85%] md:max-w-[75%] rounded-2xl p-4 shadow-sm relative ${isUser ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-bl-none'}`;
@@ -578,12 +586,14 @@
             actionsDiv.className = `msg-actions absolute -bottom-8 ${isUser ? 'right-0' : 'left-0'}`;
             
             if(!isEditing) {
+                // Copy (For everyone)
                 const copyBtn = document.createElement('button');
                 copyBtn.className = `action-btn ${isUser ? 'text-slate-500 hover:text-blue-600' : 'text-slate-400 hover:text-slate-200'}`;
                 copyBtn.innerHTML = `<i class="fa-regular fa-copy"></i> Copy`;
                 copyBtn.onclick = () => copyToClipboard(msg.text, copyBtn);
                 actionsDiv.appendChild(copyBtn);
 
+                // Edit & Delete (ONLY FOR USER)
                 if (isUser) {
                     const editBtn = document.createElement('button');
                     editBtn.className = `action-btn text-slate-500 hover:text-blue-600`;
@@ -635,6 +645,8 @@
             });
         }
 
+        // পুরনো getMemoryContext ফাংশনটা রিপ্লেস করা হয়েছে নতুন সেমান্টিক দিয়ে
+
         async function sendMessage() {
             const input = document.getElementById('user-input');
             const text = input.value.trim();
@@ -673,6 +685,7 @@
                 if (tempImagePayload) currentParts.push({ inline_data: tempImagePayload });
                 contents.push({ role: 'user', parts: currentParts });
 
+                // === নতুন সেমান্টিক মেমরি ===
                 const memory = text ? await getSemanticMemory(text) : "";
 
                 const combinedSystemPrompt = (state.systemPrompt || "") + memory;
