@@ -3,431 +3,772 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>GrokBOT - Semantic Memory</title>
+    <title>JoyBOT</title>
+
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        gemini: { 50: '#f0f4f9', 100: '#e1e7ef', 200: '#c3cfde', 800: '#1e1f20', 900: '#131314', accent: '#4285f4' }
+                    },
+                    animation: { 'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite', 'fade-in': 'fadeIn 0.3s ease-out forwards' },
+                    keyframes: { fadeIn: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } } }
+                }
+            }
+        }
+    </script>
+
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <style>
-        ::-webkit-scrollbar { width: 6px; }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         .dark ::-webkit-scrollbar-thumb { background: #475569; }
-        .prose pre { background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; position: relative; }
+
+        /* Markdown Styles */
+        .prose pre {
+            background-color: #1e293b;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 0.5rem;
+            overflow-x: auto;
+            border: 1px solid #334155;
+            margin-top: 0.5rem;
+            margin-bottom: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            position: relative;
+        }
+        .prose code {
+            background-color: rgba(0,0,0,0.1);
+            padding: 0.2rem 0.4rem;
+            border-radius: 0.25rem;
+            font-size: 0.875em;
+            font-family: 'Courier New', Courier, monospace;
+            font-weight: 600;
+        }
+        .dark .prose code { background-color: rgba(255,255,255,0.15); color: #e2e8f0; }
+        .prose p { margin-bottom: 0.75rem; line-height: 1.6; }
+        .prose strong { color: #2563eb; font-weight: 700; }
+        .dark .prose strong { color: #60a5fa; }
+
+        /* Code Block Copy Button Style */
+        .code-copy-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #94a3b8;
+            padding: 0.2rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+        .code-copy-btn:hover { background: rgba(255, 255, 255, 0.2); color: white; }
+
+        /* UI Helpers */
+        body, html { height: 100%; overflow: hidden; }
         .typing-cursor::after { content: '▋'; animation: blink 1s step-start infinite; }
         @keyframes blink { 50% { opacity: 0; } }
-        .msg-actions { opacity: 0; transition: opacity 0.2s; display: flex; gap: 8px; }
+        
+        /* Message Actions */
+        .msg-actions { opacity: 0; transition: opacity 0.2s; display: flex; gap: 8px; align-items: center; }
         .group:hover .msg-actions { opacity: 1; }
         @media (max-width: 768px) { .msg-actions { opacity: 1; } }
+
+        .action-btn { 
+            padding: 4px 8px; 
+            border-radius: 4px; 
+            font-size: 0.75rem; 
+            cursor: pointer; 
+            display: flex; 
+            align-items: center; 
+            gap: 4px;
+            background-color: rgba(0,0,0,0.05);
+        }
+        .dark .action-btn { background-color: rgba(255,255,255,0.05); }
+        .action-btn:hover { background-color: rgba(0,0,0,0.1); }
+        .dark .action-btn:hover { background-color: rgba(255,255,255,0.15); }
     </style>
 </head>
-<body class="bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 font-sans transition-colors duration-200">
+<body class="bg-white dark:bg-gemini-900 text-slate-800 dark:text-slate-200 font-sans transition-colors duration-200">
 
-    <div id="app-loader" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-white dark:bg-slate-900">
-        <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin mb-4"></div>
-        <p class="text-slate-500">Loading Neural Memory...</p>
+    <div id="app-loader" class="fixed inset-0 z-50 flex items-center justify-center bg-white dark:bg-gemini-900">
+        <div class="flex flex-col items-center gap-4">
+            <div class="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+            <p class="text-slate-500 font-medium">Loading JoyBOT...</p>
+        </div>
     </div>
 
     <div id="app" class="flex h-[100dvh] w-full hidden opacity-0 transition-opacity duration-300">
-        <aside id="sidebar" class="absolute md:relative z-40 w-72 h-full bg-slate-50 dark:bg-slate-800 transform -translate-x-full md:translate-x-0 transition-transform duration-300 flex flex-col border-r border-slate-200 dark:border-slate-700 shadow-xl md:shadow-none">
-            <div class="p-4">
-                <button onclick="createNewChat()" class="w-full bg-blue-100 dark:bg-slate-700 hover:bg-blue-200 dark:hover:bg-slate-600 py-2.5 rounded-lg flex items-center justify-center gap-2 font-medium transition-colors">
-                    <i class="fa-solid fa-plus"></i> New Chat
+        <aside id="sidebar" class="absolute md:relative z-40 w-72 h-full bg-gemini-50 dark:bg-gemini-800 transform -translate-x-full md:translate-x-0 transition-transform duration-300 flex flex-col border-r border-slate-200 dark:border-slate-700 shadow-xl md:shadow-none">
+            <div class="p-4 flex items-center justify-between">
+                <button onclick="createNewChat()" class="flex-1 bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-sm font-medium py-2.5 px-4 rounded-full flex items-center gap-2 transition-colors">
+                    <i class="fa-solid fa-plus text-slate-500 dark:text-slate-400"></i>
+                    <span>New Chat</span>
+                </button>
+                <button onclick="toggleSidebar()" class="md:hidden ml-3 text-slate-500">
+                    <i class="fa-solid fa-xmark text-xl"></i>
                 </button>
             </div>
-            <div class="flex-1 overflow-y-auto px-2" id="chat-history-list"></div>
+            <div class="flex-1 overflow-y-auto px-2 space-y-1" id="chat-history-list"></div>
             <div class="p-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
-                <div class="text-xs text-center text-slate-400 mb-2" id="memory-stats">Memories: 0 | Vectors: 0</div>
-                <button onclick="openSettings()" class="w-full py-2 flex items-center justify-center gap-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg">
-                    <i class="fa-solid fa-gear"></i> Settings
+                <button onclick="openSettings()" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-lg transition-colors">
+                    <i class="fa-solid fa-gear"></i> Settings & Models
                 </button>
+                <div class="flex items-center justify-between px-3 pt-2">
+                    <span class="text-xs text-slate-400">Dark Mode</span>
+                    <button onclick="toggleTheme()" class="text-slate-500 hover:text-blue-500 transition-colors">
+                        <i id="theme-icon" class="fa-solid fa-moon"></i>
+                    </button>
+                </div>
             </div>
         </aside>
         <div id="sidebar-overlay" onclick="toggleSidebar()" class="fixed inset-0 bg-black/50 z-30 hidden md:hidden glass"></div>
 
-        <main class="flex-1 flex flex-col relative w-full h-full bg-white dark:bg-slate-900">
-            <header class="md:hidden flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
-                <button onclick="toggleSidebar()"><i class="fa-solid fa-bars text-xl"></i></button>
-                <span class="font-bold">GrokBOT RAG</span>
+        <main class="flex-1 flex flex-col relative w-full h-full bg-white dark:bg-gemini-900">
+            <div class="md:hidden flex items-center justify-between p-4 border-b border-slate-100 dark:border-slate-800">
+                <button onclick="toggleSidebar()" class="text-slate-500 dark:text-slate-400">
+                    <i class="fa-solid fa-bars text-xl"></i>
+                </button>
+                <span class="font-semibold text-slate-700 dark:text-slate-200">JoyBOT</span>
                 <div class="w-6"></div>
-            </header>
+            </div>
 
             <div id="messages-container" class="flex-1 overflow-y-auto p-4 md:p-8 space-y-6 scroll-smooth pb-32"></div>
 
-            <div class="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-white via-white to-transparent dark:from-slate-900 dark:via-slate-900 z-20">
+            <div class="absolute bottom-0 left-0 w-full bg-gradient-to-t from-white via-white to-transparent dark:from-gemini-900 dark:via-gemini-900 pt-10 pb-4 px-4 z-20">
                 <div class="max-w-3xl mx-auto relative">
-                    <div id="image-preview-container" class="hidden absolute -top-16 left-0 bg-slate-100 dark:bg-slate-800 p-2 rounded-lg shadow border border-slate-300 dark:border-slate-700">
-                        <img id="image-preview" src="" class="h-12 w-auto rounded">
-                        <button onclick="clearImage()" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-5 h-5 text-xs"><i class="fa-solid fa-times"></i></button>
+                    <div id="image-preview-container" class="hidden absolute -top-16 left-0 bg-white dark:bg-slate-800 p-2 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 flex items-start gap-2">
+                        <img id="image-preview" src="" alt="Preview" class="h-12 w-auto rounded object-cover">
+                        <button onclick="clearImage()" class="text-red-500 hover:text-red-700 bg-white dark:bg-slate-700 rounded-full w-5 h-5 flex items-center justify-center text-xs shadow">
+                            <i class="fa-solid fa-times"></i>
+                        </button>
                     </div>
 
-                    <div class="flex items-end gap-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-2 pl-4 shadow-sm">
-                        <button onclick="document.getElementById('image-upload').click()" class="p-2 text-slate-500 hover:text-blue-500"><i class="fa-solid fa-paperclip text-lg"></i></button>
-                        <input type="file" id="image-upload" accept="image/*" class="hidden" onchange="handleImageUpload(event)">
-                        
-                        <textarea id="user-input" rows="1" class="w-full bg-transparent border-none focus:ring-0 resize-none py-3 max-h-32 text-slate-800 dark:text-slate-100 placeholder-slate-500" placeholder="Ask something..."></textarea>
-                        
-                        <button onclick="sendMessage()" id="send-btn" class="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full"><i class="fa-solid fa-paper-plane"></i></button>
+                    <div class="flex items-end gap-2 bg-slate-100 dark:bg-gemini-800 border border-slate-200 dark:border-slate-700 rounded-3xl p-2 pl-4 shadow-sm focus-within:ring-2 focus-within:ring-blue-500/50 transition-all">
+                        <button onclick="document.getElementById('image-upload').click()" class="p-2 text-slate-500 hover:text-blue-500 dark:hover:text-blue-400 transition-colors mb-0.5" title="Upload Image">
+                            <i class="fa-solid fa-paperclip text-lg"></i>
+                        </button>
+                        <input type="file" id="image-upload" accept="image/png, image/jpeg, image/webp" class="hidden" onchange="handleImageUpload(event)">
+                        <textarea id="user-input" rows="1" class="w-full bg-transparent border-none focus:ring-0 resize-none py-3 max-h-32 text-slate-800 dark:text-slate-100 placeholder-slate-500" placeholder="Ask JoyBOT..."></textarea>
+                        <button onclick="sendMessage()" id="send-btn" class="p-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed mb-0.5">
+                            <i class="fa-solid fa-paper-plane text-sm"></i>
+                        </button>
                     </div>
-                    <p id="status-indicator" class="text-center text-xs text-slate-400 mt-2">Ready.</p>
+                    <p class="text-center text-xs text-slate-400 mt-2">JoyBOT can make mistakes. Check important info. 😏</p>
                 </div>
             </div>
         </main>
     </div>
 
     <div id="settings-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 hidden backdrop-blur-sm">
-        <div class="bg-white dark:bg-slate-800 w-full max-w-md rounded-2xl shadow-2xl p-6 m-4 max-h-[90vh] overflow-y-auto">
-            <h2 class="text-xl font-bold mb-4">Settings</h2>
-            <div class="space-y-4">
+        <div class="bg-white dark:bg-gemini-800 w-full max-w-md rounded-2xl shadow-2xl overflow-hidden m-4 flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-slate-200 dark:border-slate-700 flex justify-between items-center">
+                <h2 class="text-lg font-bold">Settings</h2>
+                <button onclick="closeSettings()" class="text-slate-500 hover:text-slate-800 dark:hover:text-slate-200"><i class="fa-solid fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-6 overflow-y-auto">
                 <div>
-                    <label class="block text-sm font-medium mb-1">API Key</label>
-                    <input type="password" id="api-key-input" class="w-full bg-slate-100 dark:bg-slate-700 rounded px-3 py-2 border border-slate-300 dark:border-slate-600 focus:outline-none focus:border-blue-500">
+                    <label class="block text-sm font-medium mb-1">Google Gemini API Key</label>
+                    <div class="flex gap-2">
+                        <input type="password" id="api-key-input" class="flex-1 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" placeholder="Enter AI Studio Key">
+                        <button onclick="toggleKeyVisibility()" class="text-slate-500 px-2"><i class="fa-solid fa-eye"></i></button>
+                    </div>
+                    <p class="text-xs text-slate-400 mt-1">Key is stored locally in your browser.</p>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium mb-1">System Prompt</label>
-                    <textarea id="system-prompt" rows="4" class="w-full bg-slate-100 dark:bg-slate-700 rounded px-3 py-2 border border-slate-300 dark:border-slate-600 text-xs font-mono"></textarea>
+                    <label class="block text-sm font-medium mb-1">AI Model</label>
+                    <div class="flex gap-2">
+                        <select id="model-select" class="flex-1 bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                            <option value="gemini-1.5-flash">gemini-1.5-flash (Default)</option>
+                        </select>
+                        <button onclick="fetchAvailableModels()" id="refresh-models-btn" class="bg-blue-100 dark:bg-slate-600 text-blue-600 dark:text-blue-300 px-3 py-2 rounded-lg hover:bg-blue-200 transition-colors" title="Fetch available models">
+                            <i class="fa-solid fa-arrows-rotate"></i>
+                        </button>
+                    </div>
+                    <p id="model-status" class="text-xs text-slate-400 mt-1">Click refresh to load valid models.</p>
                 </div>
-                <div class="flex justify-between items-center pt-2">
-                    <button onclick="summarizeAllChats()" class="text-xs text-blue-500 hover:underline">Force Summarize All Chats</button>
-                    <button onclick="clearAllData()" class="text-xs text-red-500 hover:underline">Reset All Data</button>
+                <div>
+                    <label class="block text-sm font-medium mb-1">System Instructions (Safe Mode)</label>
+                    <textarea id="system-prompt" rows="6" class="w-full bg-slate-100 dark:bg-slate-700 border border-slate-300 dark:border-slate-600 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500 font-mono"></textarea>
+                </div>
+                <div class="pt-4 border-t border-slate-200 dark:border-slate-700">
+                    <button onclick="clearAllData()" class="text-red-500 text-sm hover:underline">Clear all chat history & data</button>
                 </div>
             </div>
-            <div class="mt-6 flex justify-end">
-                <button onclick="saveSettings()" class="bg-blue-600 text-white px-6 py-2 rounded-lg">Save</button>
+            <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex justify-end">
+                <button onclick="saveSettings()" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg text-sm font-medium transition-colors">Save & Close</button>
             </div>
         </div>
     </div>
 
     <script>
-        // --- CONFIG ---
-        const STATE_KEY = "GrokBOT_RAG_v1";
-        const MODEL_NAME = "gemini-1.5-flash";
-        const EMBEDDING_MODEL = "text-embedding-004"; 
-        
-        // --- DEFAULT PROMPT ---
-        const DEFAULT_PROMPT = `You are GrokBOT, a highly intelligent AI assistant. 
-        Style: Witty, smart, and concise. 
-        Context Use: Use the provided [Relevant Memories] to answer if applicable. If memories contradict, prioritize recent ones.`;
+        const DEFAULT_MODEL = "gemini-1.5-flash";
+        const EMBEDDING_MODEL = "embedding-001"; // নতুন যোগ করা
+        const STATE_KEY = "JoyBOT_state_v9"; // Version 9: User Only Edit/Delete
+        const MEMORY_LIMIT_MS = 45 * 24 * 60 * 60 * 1000; // 45 Days
 
-        // --- STATE ---
+        const DEFAULT_SYSTEM_PROMPT = `তুমি একজন অত্যন্ত বুদ্ধিমান, স্মার্ট এবং বন্ধুসুলভ এআই সহকারী। তোমার কথা বলার ধরন হবে কৌতুকপূর্ণ এবং চটপটে। তুমি কঠিন বিষয়গুলোকে খুব সহজ এবং মজাদার উদাহরণ দিয়ে ব্যাখ্যা করো। তোমার উত্তরে বুদ্ধির ছটা থাকবে। কোড দেওয়ার সময় পরিষ্কার ফরম্যাট ব্যবহার করবে এবং সংক্ষিপ্ত ব্যাখ্যা দেবে। ব্যবহারকারীর সাথে এমনভাবে কথা বলবে যেন তুমি একজন জ্ঞানী অথচ হাসি-খুশি বন্ধু। কার্যকরী উত্তর দাও।`;
+
         let state = {
             apiKey: "",
-            systemPrompt: DEFAULT_PROMPT,
-            theme: "dark", // defaulting to dark for "hacker" feel
-            chats: [], // {id, title, messages: []}
-            memories: [], // {chatId, summary, embedding: [], timestamp}
-            currentChatId: null
+            model: DEFAULT_MODEL,
+            systemPrompt: DEFAULT_SYSTEM_PROMPT,
+            theme: "light",
+            chats: [],
+            currentChatId: null,
+            availableModels: []
         };
 
         let imagePayload = null;
-        let isProcessing = false;
+        let isGenerating = false;
+        let editingMessageId = null;
 
-        // --- INIT ---
         document.addEventListener('DOMContentLoaded', () => {
             loadState();
             initTheme();
-            
-            // UI Listeners
-            const ta = document.getElementById('user-input');
-            ta.addEventListener('input', function() { this.style.height='auto'; this.style.height=this.scrollHeight+'px'; });
-            ta.addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }});
-            
+            renderSidebar();
+
+            const textarea = document.getElementById('user-input');
+            textarea.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = (this.scrollHeight) + 'px';
+                if(this.value === '') this.style.height = 'auto';
+            });
+
+            textarea.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    if(!isGenerating) sendMessage();
+                }
+            });
+
             setTimeout(() => {
                 document.getElementById('app-loader').classList.add('hidden');
-                document.getElementById('app').classList.remove('hidden', 'opacity-0');
+                document.getElementById('app').classList.remove('hidden');
+                document.getElementById('app').classList.add('opacity-100');
             }, 500);
+
+            populateModelDropdown();
         });
 
-        // --- CORE LOGIC: RAG SYSTEM ---
+        function loadState() {
+            const saved = localStorage.getItem(STATE_KEY);
+            if (saved) {
+                const parsed = JSON.parse(saved);
+                state = { ...state, ...parsed };
 
-        // 1. Generate Summary of a Chat
-        async function generateSummary(chatId, messages) {
-            if(messages.length < 4) return null; // Don't summarize very short chats
-            
-            const textToSummarize = messages.map(m => `${m.role}: ${m.text}`).join("\n");
-            const prompt = `Summarize this conversation in 3-4 sentences. Focus on facts, user preferences, or technical details learned. Ignore small talk. \n\nChat:\n${textToSummarize}`;
+                const now = Date.now();
+                const originalCount = state.chats.length;
+                state.chats = state.chats.filter(c => (now - c.timestamp) < MEMORY_LIMIT_MS);
+                
+                if(state.chats.length < originalCount) {
+                    saveState();
+                }
 
-            try {
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:generateContent?key=${state.apiKey}`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-                });
-                const data = await response.json();
-                return data.candidates[0].content.parts[0].text;
-            } catch(e) { console.error("Summary Failed:", e); return null; }
+                if (!state.systemPrompt || state.systemPrompt.includes("বেপরোয়া")) state.systemPrompt = DEFAULT_SYSTEM_PROMPT;
+                if (state.chats.length > 0 && !state.currentChatId) state.currentChatId = state.chats[0].id;
+            } else {
+                state.systemPrompt = DEFAULT_SYSTEM_PROMPT;
+            }
+            document.getElementById('api-key-input').value = state.apiKey;
+            document.getElementById('system-prompt').value = state.systemPrompt;
+            if (state.currentChatId) loadChat(state.currentChatId); else showWelcome();
         }
 
-        // 2. Generate Embedding (Vector)
+        function saveState() { localStorage.setItem(STATE_KEY, JSON.stringify(state)); }
+
+        function initTheme() {
+            if (state.theme === 'dark' || (!state.theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                document.getElementById('theme-icon').classList.replace('fa-moon', 'fa-sun');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+        function toggleTheme() { state.theme = state.theme === 'light' ? 'dark' : 'light'; initTheme(); saveState(); }
+
+        async function fetchAvailableModels() {
+            const key = document.getElementById('api-key-input').value.trim();
+            const btn = document.getElementById('refresh-models-btn');
+            const status = document.getElementById('model-status');
+            if (!key) { status.innerText = "Please enter API Key."; status.classList.add("text-red-500"); return; }
+            btn.innerHTML = '<i class="fa-solid fa-spinner animate-spin"></i>';
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${key}`);
+                if (!response.ok) throw new Error("Failed.");
+                const data = await response.json();
+                state.availableModels = data.models.filter(m => m.supportedGenerationMethods?.includes("generateContent") && m.name.includes("gemini")).map(m => m.name.replace("models/", ""));
+                if (!state.availableModels.includes(state.model)) state.model = state.availableModels[0];
+                populateModelDropdown();
+                status.innerText = `Loaded ${state.availableModels.length} models.`;
+                status.classList.remove("text-red-500");
+                saveState();
+            } catch (e) { status.innerText = "Error: " + e.message; status.classList.add("text-red-500"); }
+            finally { btn.innerHTML = '<i class="fa-solid fa-arrows-rotate"></i>'; }
+        }
+
+        function populateModelDropdown() {
+            const select = document.getElementById('model-select');
+            select.innerHTML = "";
+            (state.availableModels.length ? state.availableModels : [DEFAULT_MODEL]).forEach(m => {
+                const opt = document.createElement('option'); opt.value = m; opt.text = m;
+                if (m === state.model) opt.selected = true;
+                select.appendChild(opt);
+            });
+        }
+
+        function openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
+        function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
+        function saveSettings() {
+            state.apiKey = document.getElementById('api-key-input').value.trim();
+            state.model = document.getElementById('model-select').value;
+            state.systemPrompt = document.getElementById('system-prompt').value;
+            saveState(); closeSettings();
+        }
+        function toggleKeyVisibility() { const i = document.getElementById('api-key-input'); i.type = i.type === 'password' ? 'text' : 'password'; }
+        function clearAllData() { if(confirm("Are you sure?")) { localStorage.removeItem(STATE_KEY); location.reload(); } }
+
+        // === নতুন Semantic Memory ফাংশনগুলো ===
+        function cosineSimilarity(vec1, vec2) {
+            let dotProduct = 0;
+            let mag1 = 0;
+            let mag2 = 0;
+            for (let i = 0; i < vec1.length; i++) {
+                dotProduct += vec1[i] * vec2[i];
+                mag1 += vec1[i] * vec1[i];
+                mag2 += vec2[i] * vec2[i];
+            }
+            return dotProduct / (Math.sqrt(mag1) * Math.sqrt(mag2) || 1);
+        }
+
         async function getEmbedding(text) {
+            if (!state.apiKey || !text) return [];
             try {
                 const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${EMBEDDING_MODEL}:embedContent?key=${state.apiKey}`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        model: `models/${EMBEDDING_MODEL}`,
-                        content: { parts: [{ text: text }] }
-                    })
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ content: { parts: [{ text }] } })
                 });
+                if (!response.ok) throw new Error('Embedding failed');
                 const data = await response.json();
-                return data.embedding.values; // Array of floats
-            } catch(e) { console.error("Embedding Failed:", e); return null; }
-        }
-
-        // 3. Cosine Similarity (Math to find relevance)
-        function cosineSimilarity(vecA, vecB) {
-            let dotProduct = 0, magnitudeA = 0, magnitudeB = 0;
-            for (let i = 0; i < vecA.length; i++) {
-                dotProduct += vecA[i] * vecB[i];
-                magnitudeA += vecA[i] * vecA[i];
-                magnitudeB += vecB[i] * vecB[i];
+                return data.embedding.values || [];
+            } catch (e) {
+                console.error('Embedding error:', e);
+                return [];
             }
-            return dotProduct / (Math.sqrt(magnitudeA) * Math.sqrt(magnitudeB));
         }
 
-        // 4. Retrieve Relevant Memories
-        async function getContext(queryText) {
-            updateStatus("Accessing Neural Memory...");
-            
-            // Step A: Layer 1 - Recent Summaries (Last 5 days/chats)
-            const recentMemories = state.memories
-                .sort((a, b) => b.timestamp - a.timestamp)
-                .slice(0, 5)
-                .map(m => `- Recent Summary (${new Date(m.timestamp).toLocaleDateString()}): ${m.summary}`);
+        async function summarizeChat(chat) {
+            if (!chat || chat.messages.length < 6) return '';
+            const recentMessages = chat.messages.slice(-25);
+            let conversation = recentMessages.map(m => 
+                `${m.role === 'user' ? 'Joy' : 'JoyBOT'}: ${m.text}`
+            ).join('\n');
 
-            // Step B: Layer 2 - Vector Search (Long Term)
-            if (!state.apiKey) return recentMemories.join("\n");
+            const summaryPrompt = `এই কথোপকথনটি সংক্ষেপে সারাংশ করো (৩০০-৫০০ শব্দের মধ্যে)। ফোকাস করো:
+- জয়ের ব্যক্তিত্ব, আগ্রহ, পছন্দ, ব্যাকগ্রাউন্ড সম্পর্কে কী শেখা গেল
+- গুরুত্বপূর্ণ টপিক বা চলমান আলোচনা
+- জয় কেমন স্টাইলে কথা বলে, কীভাবে উত্তর দেওয়া উচিত
 
-            const queryVector = await getEmbedding(queryText);
-            if (!queryVector) return recentMemories.join("\n");
+ভবিষ্যতে কনটেক্সট হিসেবে ব্যবহারের জন্য স্পষ্ট এবং সংক্ষিপ্ত রাখো। বাংলায় লিখো।`;
 
-            // Calculate similarity for ALL memories
-            const scoredMemories = state.memories.map(mem => ({
-                ...mem,
-                score: mem.embedding ? cosineSimilarity(queryVector, mem.embedding) : 0
-            }));
-
-            // Filter top relevant (Score > 0.6 is usually good relevance)
-            const vectorMemories = scoredMemories
-                .filter(m => m.score > 0.6) 
-                .sort((a, b) => b.score - a.score)
-                .slice(0, 3) // Take top 3 relevant chunks
-                .map(m => `- Relevant Past Memory (Score ${m.score.toFixed(2)}): ${m.summary}`);
-
-            updateStatus("Ready.");
-            
-            // Combine unique memories
-            const allContext = [...new Set([...recentMemories, ...vectorMemories])];
-            return allContext.join("\n");
+            try {
+                const requestBody = {
+                    contents: [{ role: "user", parts: [{ text: summaryPrompt + "\n\nকথোপকথন:\n" + conversation }] }],
+                    generationConfig: { temperature: 0.4, maxOutputTokens: 600 }
+                };
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${state.model}:generateContent?key=${state.apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+                if (!response.ok) throw new Error('Summary API error');
+                const data = await response.json();
+                return data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            } catch (e) {
+                console.error('Summarization failed:', e);
+                return '';
+            }
         }
 
-        // --- CHAT LOGIC ---
+        async function getSemanticMemory(currentQuery) {
+            if (!currentQuery || currentQuery.length < 10) return "";
+
+            const now = Date.now();
+            const pastChats = state.chats.filter(c => 
+                c.id !== state.currentChatId && 
+                (now - c.timestamp) < MEMORY_LIMIT_MS &&
+                c.messages && c.messages.length > 5
+            );
+
+            if (pastChats.length === 0) return "";
+
+            let queryEmbedding = [];
+            try {
+                queryEmbedding = await getEmbedding(currentQuery);
+                if (queryEmbedding.length === 0) return "";
+            } catch (e) { return ""; }
+
+            const scoredChats = [];
+            for (let chat of pastChats) {
+                if (!chat.summary || chat.summary.length < 50) {
+                    try {
+                        chat.summary = await summarizeChat(chat);
+                        if (chat.summary) {
+                            chat.embedding = await getEmbedding(chat.summary);
+                            saveState();
+                        }
+                    } catch (e) { continue; }
+                }
+                if (!chat.embedding || chat.embedding.length === 0) continue;
+
+                const similarity = cosineSimilarity(queryEmbedding, chat.embedding);
+                if (similarity > 0.55) {
+                    scoredChats.push({
+                        title: chat.title,
+                        summary: chat.summary,
+                        similarity: similarity
+                    });
+                }
+            }
+
+            scoredChats.sort((a, b) => b.similarity - a.similarity);
+            const topRelevant = scoredChats.slice(0, 5);
+
+            if (topRelevant.length === 0) return "";
+
+            let memoryText = "\n\n--- সেমান্টিক মেমরি: পুরনো প্রাসঙ্গিক কথোপকথন ---\n";
+            topRelevant.forEach(item => {
+                memoryText += `\n[চ্যাট: ${item.title} | সিমিলারিটি: ${item.similarity.toFixed(2)}]\n${item.summary}\n`;
+            });
+            memoryText += "\n--- মেমরি শেষ ---\n\nএই তথ্যগুলো ব্যবহার করে জয়কে চিনে নাও এবং সেই অনুযায়ী উত্তর দাও।";
+
+            return memoryText;
+        }
+
+        async function createNewChat() {
+            // পুরনো চ্যাট সামারাইজ করা (ব্যাকগ্রাউন্ডে)
+            if (state.currentChatId) {
+                const currentChat = state.chats.find(c => c.id === state.currentChatId);
+                if (currentChat && currentChat.messages.length > 8 && !currentChat.summary) {
+                    summarizeChat(currentChat).then(summary => {
+                        if (summary) {
+                            currentChat.summary = summary;
+                            getEmbedding(summary).then(emb => {
+                                if (emb.length) currentChat.embedding = emb;
+                                saveState();
+                                renderSidebar();
+                            });
+                        }
+                    }).catch(() => {});
+                }
+            }
+
+            const id = Date.now().toString();
+            state.chats.unshift({ id, title: "New Chat", timestamp: Date.now(), messages: [] });
+            state.currentChatId = id;
+            saveState(); renderSidebar(); loadChat(id);
+            if(window.innerWidth < 768) toggleSidebar();
+        }
+
+        function loadChat(chatId) {
+            state.currentChatId = chatId;
+            const chat = state.chats.find(c => c.id === chatId);
+            const container = document.getElementById('messages-container');
+            container.innerHTML = "";
+            if (!chat || !chat.messages.length) showWelcome();
+            else chat.messages.forEach((msg, index) => renderMessage(msg, index));
+            renderSidebar();
+            scrollToBottom();
+        }
+
+        function deleteChat(e, id) {
+            e.stopPropagation();
+            if(confirm("Delete this chat?")) {
+                state.chats = state.chats.filter(c => c.id !== id);
+                state.currentChatId = state.chats.length ? state.chats[0].id : null;
+                saveState(); renderSidebar();
+                if (state.currentChatId) loadChat(state.currentChatId);
+                else { document.getElementById('messages-container').innerHTML = ""; showWelcome(); }
+            }
+        }
+
+        function renderSidebar() {
+            const list = document.getElementById('chat-history-list'); list.innerHTML = "";
+            state.chats.forEach(chat => {
+                const div = document.createElement('div');
+                div.className = `group flex items-center justify-between p-3 rounded-lg cursor-pointer text-sm transition-colors ${chat.id === state.currentChatId ? 'bg-blue-100 dark:bg-slate-700 text-blue-700 dark:text-blue-100' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800'}`;
+                div.onclick = () => loadChat(chat.id);
+                div.innerHTML = `<div class="flex items-center gap-3 overflow-hidden"><i class="fa-regular fa-message"></i><span class="truncate max-w-[140px]">${chat.title}</span></div>${chat.id === state.currentChatId ? `<button onclick="deleteChat(event, '${chat.id}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-red-500 transition-opacity"><i class="fa-solid fa-trash"></i></button>` : ''}`;
+                list.appendChild(div);
+            });
+        }
+
+        function showWelcome() {
+            document.getElementById('messages-container').innerHTML = `<div id="welcome-screen" class="flex flex-col items-center justify-center h-full text-center opacity-80 mt-[-50px]"><div class="w-16 h-16 bg-gradient-to-tr from-blue-400 to-red-400 rounded-2xl mb-6 shadow-lg animate-pulse"></div><h1 class="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-purple-500 mb-2">Hi Joy</h1><p class="text-slate-500 dark:text-slate-400 max-w-md">Ready to chat with JoyBOT?</p></div>`;
+        }
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('-translate-x-full'); document.getElementById('sidebar-overlay').classList.toggle('hidden'); }
+
+        // --- MESSAGE OPERATIONS ---
+        function deleteMessage(index) {
+            if(!confirm("Delete this message?")) return;
+            const chat = state.chats.find(c => c.id === state.currentChatId);
+            if(chat) {
+                chat.messages.splice(index, 1);
+                saveState();
+                loadChat(state.currentChatId);
+            }
+        }
+
+        function toggleEdit(index) {
+            editingMessageId = index;
+            loadChat(state.currentChatId);
+        }
+
+        function cancelEdit() {
+            editingMessageId = null;
+            loadChat(state.currentChatId);
+        }
+
+        function submitEdit(index) {
+            const input = document.getElementById(`edit-input-${index}`);
+            const newText = input.value.trim();
+            if(!newText) return;
+
+            const chat = state.chats.find(c => c.id === state.currentChatId);
+            if(chat) {
+                chat.messages[index].text = newText;
+                saveState();
+                editingMessageId = null;
+                loadChat(state.currentChatId);
+            }
+        }
+
+        function renderMessage(msg, index) {
+            const container = document.getElementById('messages-container');
+            const welcome = document.getElementById('welcome-screen'); if (welcome) welcome.remove();
+            const isUser = msg.role === 'user';
+            const isEditing = editingMessageId === index;
+            
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex w-full ${isUser ? 'justify-end' : 'justify-start'} animate-fade-in group relative`;
+
+            const bubble = document.createElement('div');
+            bubble.className = `max-w-[85%] md:max-w-[75%] rounded-2xl p-4 shadow-sm relative ${isUser ? 'bg-blue-600 text-white rounded-br-none' : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 rounded-bl-none'}`;
+
+            if(isEditing) {
+                bubble.innerHTML = `
+                    <textarea id="edit-input-${index}" class="w-full bg-transparent border border-white/30 dark:border-slate-600 rounded p-2 focus:outline-none resize-y text-inherit" rows="3">${msg.text}</textarea>
+                    <div class="flex justify-end gap-2 mt-2">
+                        <button onclick="cancelEdit()" class="text-xs px-2 py-1 rounded bg-red-500/20 hover:bg-red-500/40 text-red-100">Cancel</button>
+                        <button onclick="submitEdit(${index})" class="text-xs px-2 py-1 rounded bg-green-500/20 hover:bg-green-500/40 text-green-100">Save</button>
+                    </div>
+                `;
+            } else {
+                let contentHtml = msg.image ? `<img src="${msg.image}" class="max-w-full h-auto rounded-lg mb-3 border border-white/20">` : "";
+                contentHtml += isUser ? `<p class="whitespace-pre-wrap font-sans">${escapeHtml(msg.text)}</p>` : `<div class="prose dark:prose-invert max-w-none text-sm md:text-base leading-relaxed">${marked.parse(msg.text)}</div>`;
+                bubble.innerHTML = contentHtml;
+            }
+
+            const actionsDiv = document.createElement('div');
+            actionsDiv.className = `msg-actions absolute -bottom-8 ${isUser ? 'right-0' : 'left-0'}`;
+            
+            if(!isEditing) {
+                // Copy (For everyone)
+                const copyBtn = document.createElement('button');
+                copyBtn.className = `action-btn ${isUser ? 'text-slate-500 hover:text-blue-600' : 'text-slate-400 hover:text-slate-200'}`;
+                copyBtn.innerHTML = `<i class="fa-regular fa-copy"></i> Copy`;
+                copyBtn.onclick = () => copyToClipboard(msg.text, copyBtn);
+                actionsDiv.appendChild(copyBtn);
+
+                // Edit & Delete (ONLY FOR USER)
+                if (isUser) {
+                    const editBtn = document.createElement('button');
+                    editBtn.className = `action-btn text-slate-500 hover:text-blue-600`;
+                    editBtn.innerHTML = `<i class="fa-solid fa-pen"></i>`;
+                    editBtn.title = "Edit";
+                    editBtn.onclick = () => toggleEdit(index);
+                    actionsDiv.appendChild(editBtn);
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = `action-btn text-red-400 hover:text-red-600`;
+                    deleteBtn.innerHTML = `<i class="fa-solid fa-trash"></i>`;
+                    deleteBtn.title = "Delete";
+                    deleteBtn.onclick = () => deleteMessage(index);
+                    actionsDiv.appendChild(deleteBtn);
+                }
+            }
+
+            wrapper.appendChild(bubble);
+            wrapper.appendChild(actionsDiv);
+            container.appendChild(wrapper);
+
+            if(!isUser && !isEditing) addCodeBlockButtons(bubble);
+        }
+
+        function addCodeBlockButtons(element) {
+            const preTags = element.querySelectorAll('pre');
+            preTags.forEach(pre => {
+                if(pre.querySelector('.code-copy-btn')) return;
+                const btn = document.createElement('button');
+                btn.className = 'code-copy-btn';
+                btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+                btn.onclick = () => {
+                    const code = pre.querySelector('code').innerText;
+                    navigator.clipboard.writeText(code).then(() => {
+                        const original = btn.innerHTML;
+                        btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+                        setTimeout(() => btn.innerHTML = original, 2000);
+                    });
+                };
+                pre.appendChild(btn);
+            });
+        }
+
+        function copyToClipboard(text, btnElement) {
+            navigator.clipboard.writeText(text).then(() => {
+                const originalHtml = btnElement.innerHTML;
+                btnElement.innerHTML = `<i class="fa-solid fa-check"></i> Copied!`;
+                setTimeout(() => btnElement.innerHTML = originalHtml, 2000);
+            });
+        }
+
+        // পুরনো getMemoryContext ফাংশনটা রিপ্লেস করা হয়েছে নতুন সেমান্টিক দিয়ে
 
         async function sendMessage() {
             const input = document.getElementById('user-input');
             const text = input.value.trim();
-            if ((!text && !imagePayload) || !state.apiKey) { if(!state.apiKey) openSettings(); return; }
-            if (isProcessing) return;
-
+            if ((!text && !imagePayload) || !state.apiKey) { if (!state.apiKey) openSettings(); return; }
             if (!state.currentChatId) createNewChat();
-            
-            // UI Update
+
             input.value = ''; input.style.height = 'auto';
-            isProcessing = true;
-            document.getElementById('send-btn').disabled = true;
+            document.getElementById('send-btn').disabled = true; isGenerating = true;
 
             const currentChat = state.chats.find(c => c.id === state.currentChatId);
-            const userMsg = { role: 'user', text: text, image: imagePayload ? imagePayload.data : null };
+            const userMsg = { role: 'user', text: text, image: imagePayload ? `data:${imagePayload.mime_type};base64,${imagePayload.data}` : null };
             currentChat.messages.push(userMsg);
-            saveState(); renderChat(); scrollToBottom();
+            saveState(); 
+            loadChat(state.currentChatId);
 
-            // AI Processing
-            const aiPlaceholder = addPlaceholder();
-            
+            const tempImagePayload = imagePayload; clearImage(); scrollToBottom();
+
+            const container = document.getElementById('messages-container');
+            const aiWrapper = document.createElement('div');
+            aiWrapper.className = `flex w-full justify-start relative`;
+            aiWrapper.innerHTML = `<div class="max-w-[85%] md:max-w-[75%] rounded-2xl p-4 rounded-bl-none bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 shadow-sm"><div class="prose dark:prose-invert max-w-none text-sm md:text-base leading-relaxed typing-cursor"></div></div>`;
+            container.appendChild(aiWrapper);
+            const aiContentDiv = aiWrapper.querySelector('.prose');
+
+            let fullResponseText = "";
+            let isError = false;
+
             try {
-                // 1. Build Context
-                const memoryContext = await getContext(text);
-                const systemInstruction = `${state.systemPrompt}\n\n[RELEVANT MEMORIES FROM DATABASE]:\n${memoryContext || "None found."}`;
-
-                // 2. Prepare Payload
-                const history = currentChat.messages.slice(-10).map(m => ({
-                    role: m.role === 'user' ? 'user' : 'model',
-                    parts: [{ text: m.text }]
-                })); // Only last 10 messages of CURRENT chat for short-term flow
-
-                // Add current message
-                const currentParts = [{ text: text }];
-                if (imagePayload) currentParts.push({ inline_data: { mime_type: imagePayload.mime_type, data: imagePayload.data } });
-
-                // 3. Call API
-                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL_NAME}:streamGenerateContent?key=${state.apiKey}`, {
-                    method: 'POST', headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({
-                        contents: [...history, { role: 'user', parts: currentParts }],
-                        system_instruction: { parts: [{ text: systemInstruction }] },
-                        generationConfig: { maxOutputTokens: 2000 }
-                    })
+                const contents = [];
+                currentChat.messages.slice(0, -1).slice(-10).forEach(m => {
+                    if (m.text && !m.text.startsWith("⚠️")) contents.push({ role: m.role === 'user' ? 'user' : 'model', parts: [{ text: m.text }] });
                 });
 
-                // 4. Stream Response
+                const currentParts = [];
+                if (text) currentParts.push({ text: text });
+                if (tempImagePayload) currentParts.push({ inline_data: tempImagePayload });
+                contents.push({ role: 'user', parts: currentParts });
+
+                // === নতুন সেমান্টিক মেমরি ===
+                const memory = text ? await getSemanticMemory(text) : "";
+
+                const combinedSystemPrompt = (state.systemPrompt || "") + memory;
+
+                const requestBody = {
+                    contents: contents,
+                    generationConfig: { temperature: 0.9, maxOutputTokens: 4096 },
+                    safetySettings: [
+                        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+                        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+                        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+                        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
+                    ],
+                    system_instruction: { parts: [{ text: combinedSystemPrompt }] }
+                };
+
+                let response;
+                let retryCount = 0;
+                while (retryCount < 3) {
+                    try {
+                        response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${state.model}:streamGenerateContent?key=${state.apiKey}`, {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(requestBody)
+                        });
+                        if (response.status === 429) { retryCount++; await new Promise(r => setTimeout(r, 2000 * retryCount)); continue; }
+                        if (!response.ok) throw new Error((await response.json()).error?.message || "API Error");
+                        break;
+                    } catch (netErr) { if (retryCount === 2) throw netErr; retryCount++; await new Promise(r => setTimeout(r, 2000)); }
+                }
+
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
-                let fullText = "";
-                
-                while(true) {
+                while (true) {
                     const { done, value } = await reader.read();
-                    if(done) break;
-                    const chunk = decoder.decode(value, {stream: true});
-                    // Simple parse for stream
-                    const matches = chunk.match(/"text":\s*"((?:[^"\\]|\\.)*)"/g);
-                    if(matches) {
-                        matches.forEach(m => {
-                            try { fullText += JSON.parse(`{${m}}`).text; } catch(e){}
-                        });
-                        aiPlaceholder.innerHTML = marked.parse(fullText);
-                        scrollToBottom();
+                    if (done) break;
+                    const chunk = decoder.decode(value, { stream: true });
+                    const regex = /"text":\s*"((?:[^"\\]|\\.)*)"/g;
+                    let match;
+                    while ((match = regex.exec(chunk)) !== null) {
+                        try {
+                            fullResponseText += JSON.parse(`"${match[1]}"`);
+                            aiContentDiv.innerHTML = marked.parse(fullResponseText);
+                            scrollToBottom();
+                        } catch (e) {}
                     }
                 }
 
-                currentChat.messages.push({ role: 'model', text: fullText });
-                saveState();
-                
-                // 5. AUTO-SUMMARIZE TRIGGER (Every 5 messages or end of thought)
-                if(currentChat.messages.length % 6 === 0) {
-                    updateStatus("Consolidating memory...");
-                    const summary = await generateSummary(state.currentChatId, currentChat.messages);
-                    if(summary) {
-                        const vec = await getEmbedding(summary);
-                        // Save/Update Memory
-                        const existingMemIndex = state.memories.findIndex(m => m.chatId === state.currentChatId);
-                        const memObj = { chatId: state.currentChatId, summary: summary, embedding: vec, timestamp: Date.now() };
-                        
-                        if(existingMemIndex >= 0) state.memories[existingMemIndex] = memObj;
-                        else state.memories.push(memObj);
-                        
-                        saveState();
-                        updateStatus("Memory updated.");
-                    }
-                }
+                if (!fullResponseText.trim()) throw new Error("Safety Blocked");
 
             } catch (error) {
-                aiPlaceholder.innerHTML = `<span class="text-red-500">Error: ${error.message}</span>`;
+                isError = true;
+                fullResponseText = `⚠️ **Error:** _${error.message}_`;
+                aiContentDiv.innerHTML = marked.parse(fullResponseText);
+                aiContentDiv.classList.add('text-red-500');
             } finally {
-                isProcessing = false;
+                aiContentDiv.classList.remove('typing-cursor');
                 document.getElementById('send-btn').disabled = false;
-                clearImage();
-                renderSidebar(); // Update stats
-            }
-        }
-
-        // --- HELPERS ---
-        function loadState() {
-            const s = localStorage.getItem(STATE_KEY);
-            if(s) state = {...state, ...JSON.parse(s)};
-            document.getElementById('api-key-input').value = state.apiKey;
-            document.getElementById('system-prompt').value = state.systemPrompt;
-            if(state.currentChatId) renderChat();
-            renderSidebar();
-        }
-        function saveState() { localStorage.setItem(STATE_KEY, JSON.stringify(state)); renderSidebar(); }
-        function initTheme() { document.documentElement.classList.add('dark'); } // Force Dark
-        
-        function createNewChat() {
-            const id = Date.now().toString();
-            state.chats.unshift({id, title: "New Session", messages: []});
-            state.currentChatId = id;
-            saveState(); renderChat();
-            if(window.innerWidth < 768) toggleSidebar();
-        }
-
-        function renderSidebar() {
-            const list = document.getElementById('chat-history-list');
-            list.innerHTML = state.chats.map(c => `
-                <div onclick="state.currentChatId='${c.id}'; renderChat();" class="p-3 mb-1 rounded cursor-pointer ${c.id === state.currentChatId ? 'bg-blue-100 dark:bg-slate-700' : 'hover:bg-slate-200 dark:hover:bg-slate-800'}">
-                    <div class="truncate text-sm">${c.title}</div>
-                </div>`).join('');
-            
-            // Stats
-            const vecCount = state.memories.filter(m => m.embedding).length;
-            document.getElementById('memory-stats').innerText = `Memories: ${state.memories.length} | Vectors: ${vecCount}`;
-        }
-
-        function renderChat() {
-            const chat = state.chats.find(c => c.id === state.currentChatId);
-            const box = document.getElementById('messages-container');
-            box.innerHTML = "";
-            if(!chat) return;
-            
-            chat.messages.forEach((m, idx) => {
-                const isUser = m.role === 'user';
-                const div = document.createElement('div');
-                div.className = `flex ${isUser ? 'justify-end' : 'justify-start'} group`;
-                div.innerHTML = `
-                    <div class="max-w-[85%] rounded-2xl p-4 ${isUser ? 'bg-blue-600 text-white' : 'bg-slate-200 dark:bg-slate-800'} relative">
-                        ${m.image ? `<img src="data:${m.image.mime_type || 'image/jpeg'};base64,${m.image}" class="rounded mb-2 max-h-48">` : ''}
-                        <div class="prose dark:prose-invert text-sm">${marked.parse(m.text)}</div>
-                        
-                        <div class="msg-actions absolute -bottom-6 ${isUser ? 'right-0' : 'left-0'} text-xs text-slate-500">
-                            <button onclick="navigator.clipboard.writeText(\`${m.text.replace(/`/g, '\\`')}\`)"><i class="fa-regular fa-copy"></i></button>
-                            ${isUser ? `<button onclick="deleteMsg(${idx})"><i class="fa-solid fa-trash text-red-400"></i></button>` : ''}
-                        </div>
-                    </div>
-                `;
-                box.appendChild(div);
-            });
-            setTimeout(scrollToBottom, 100);
-        }
-
-        function addPlaceholder() {
-            const box = document.getElementById('messages-container');
-            const div = document.createElement('div');
-            div.className = "flex justify-start";
-            div.innerHTML = `<div class="max-w-[85%] rounded-2xl p-4 bg-slate-200 dark:bg-slate-800"><div class="typing-cursor"></div></div>`;
-            box.appendChild(div);
-            return div.querySelector('div');
-        }
-
-        function deleteMsg(idx) {
-            const chat = state.chats.find(c => c.id === state.currentChatId);
-            chat.messages.splice(idx, 1);
-            saveState(); renderChat();
-        }
-
-        function scrollToBottom() { const c = document.getElementById('messages-container'); c.scrollTop = c.scrollHeight; }
-        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('-translate-x-full'); document.getElementById('sidebar-overlay').classList.toggle('hidden'); }
-        function openSettings() { document.getElementById('settings-modal').classList.remove('hidden'); }
-        function closeSettings() { document.getElementById('settings-modal').classList.add('hidden'); }
-        function saveSettings() { 
-            state.apiKey = document.getElementById('api-key-input').value; 
-            state.systemPrompt = document.getElementById('system-prompt').value; 
-            saveState(); closeSettings(); 
-        }
-        function updateStatus(txt) { document.getElementById('status-indicator').innerText = txt; }
-        function clearAllData() { if(confirm("Reset Everything?")) { localStorage.removeItem(STATE_KEY); location.reload(); }}
-        
-        function handleImageUpload(e) {
-            const file = e.target.files[0];
-            const reader = new FileReader();
-            reader.onload = function(evt) {
-                const b64 = evt.target.result;
-                imagePayload = { mime_type: b64.split(';')[0].split(':')[1], data: b64.split(',')[1] };
-                document.getElementById('image-preview').src = b64;
-                document.getElementById('image-preview-container').classList.remove('hidden');
-            };
-            if(file) reader.readAsDataURL(file);
-        }
-        function clearImage() { imagePayload=null; document.getElementById('image-preview-container').classList.add('hidden'); }
-
-        // Force Manual Summarization (Optional)
-        async function summarizeAllChats() {
-            updateStatus("Batch Summarizing...");
-            for(let chat of state.chats) {
-                const summary = await generateSummary(chat.id, chat.messages);
-                if(summary) {
-                    const vec = await getEmbedding(summary);
-                    state.memories.push({ chatId: chat.id, summary, embedding: vec, timestamp: Date.now() });
+                isGenerating = false;
+                
+                aiWrapper.remove(); 
+                
+                if (!isError) {
+                    currentChat.messages.push({ role: 'model', text: fullResponseText });
+                    saveState();
+                    loadChat(state.currentChatId);
                 }
             }
-            saveState();
-            updateStatus("Batch Done.");
         }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0]; if (!file) return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const base64Raw = e.target.result;
+                const split = base64Raw.split(',');
+                imagePayload = { mime_type: split[0].match(/:(.*?);/)[1], data: split[1] };
+                document.getElementById('image-preview').src = base64Raw;
+                document.getElementById('image-preview-container').classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+        function clearImage() { imagePayload = null; document.getElementById('image-upload').value = ""; document.getElementById('image-preview-container').classList.add('hidden'); }
+        function scrollToBottom() { const container = document.getElementById('messages-container'); container.scrollTop = container.scrollHeight; }
+        function escapeHtml(text) { return text.replace(/[&<>"']/g, function(m) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]; }); }
     </script>
 </body>
 </html>
